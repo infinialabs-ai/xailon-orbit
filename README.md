@@ -50,7 +50,7 @@ XailonOrbit app  ⇄  Relay (ciphertext only)  ⇄  xailon-orbitd (your computer
 
 ```sh
 # Windows (Scoop)
-scoop bucket add mantou https://github.com/infinialabs-ai/scoop-bucket
+scoop bucket add infinialabs https://github.com/infinialabs-ai/scoop-bucket
 scoop install xailon-orbitd
 
 # From source

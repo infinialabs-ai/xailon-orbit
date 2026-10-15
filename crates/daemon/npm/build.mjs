@@ -16,7 +16,11 @@ if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error(`Inval
 const common = {
   version,
   license: 'MIT',
-  repository: { type: 'git', url: 'git+https://github.com/infinialabs-ai/xailon-orbit.git', directory: 'crates/daemon/npm' },
+  repository: {
+    type: 'git',
+    url: 'git+https://github.com/infinialabs-ai/xailon-orbit.git',
+    directory: 'crates/daemon/npm',
+  },
   publishConfig: { access: 'public', registry: 'https://registry.npmjs.org/' },
 };
 const packages = [];

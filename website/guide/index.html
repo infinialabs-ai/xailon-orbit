@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>XailonOrbit User Guide</title>
+    <meta
+      name="description"
+      content="Install xailon-orbitd, pair your phone, choose XailonCode or any ACP agent, and self-host the relay. The complete, self-serve guide to XailonOrbit."
+    >
+    <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="../assets/style.css?v=1">
+  </head>
+  <body>
+    <nav class="nav solid" id="nav">
+      <div class="wrap nav-inner">
+        <a class="logo" href="../">
+          <img src="../assets/logo.svg" alt="">
+          <span class="logo-name">XailonOrbit</span>
+          <span class="logo-by">Infinia Labs</span>
+        </a>
+        <div class="nav-links">
+          <a href="../#features">Features</a>
+          <a href="../#install">Install</a>
+          <a href="./" class="active">User guide</a>
+          <a href="#relay">Self-host</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="https://xailoncode.infinialabs.ai/" target="_blank" rel="noopener"
+            >XailonCode</a
+          >
+          <a class="btn btn-accent" href="#daemon">Install</a>
+          <button class="menu-btn" type="button" aria-label="Menu"><span></span><span></span><span></span></button>
+        </div>
+      </div>
+    </nav>
+
+    <header class="guide-hero">
+      <div class="wrap">
+        <span class="eyebrow">User guide</span>
+        <h1>Everything you need to connect</h1>
+        <p class="sub">
+          From a fresh download to a working connection: install the daemon, pair your phone, pick an agent, and
+          optionally run your own relay. No account and no support ticket needed.
+        </p>
+      </div>
+    </header>
+
+    <div class="wrap guide-layout">
+      <aside class="toc">
+        <p>On this page</p>
+        <ol>
+          <li><a href="#overview">1. How XailonOrbit works</a></li>
+          <li><a href="#requirements">2. Requirements</a></li>
+          <li><a href="#daemon">3. Install the daemon</a></li>
+          <li><a href="#app">4. Install the app</a></li>
+          <li><a href="#pair">5. Pair your devices</a></li>
+          <li><a href="#agents">6. Agents and ACP</a></li>
+          <li><a href="#using">7. Using XailonOrbit</a></li>
+          <li><a href="#relay">8. Relay: hosted or self-hosted</a></li>
+          <li><a href="#commands">9. Daemon commands</a></li>
+          <li><a href="#security">10. Security model</a></li>
+          <li><a href="#data">11. Data and logs</a></li>
+          <li><a href="#troubleshooting">12. Troubleshooting</a></li>
+          <li><a href="#uninstall">13. Update and uninstall</a></li>
+          <li><a href="#privacy">14. Privacy</a></li>
+        </ol>
+      </aside>
+
+      <main class="doc">
+        <section id="overview">
+          <h2>1. How XailonOrbit works</h2>
+          <p>
+            XailonOrbit has three parts. You install two of them; the third is hosted for you, or you can run it
+            yourself.
+          </p>
+          <table>
+            <tr>
+              <th>Part</th>
+              <th>Runs on</th>
+              <th>What it does</th>
+            </tr>
+            <tr>
+              <td><strong>xailon-orbitd</strong></td>
+              <td>Your computer</td>
+              <td>
+                A background daemon that starts your ACP agents (XailonCode by default), serves files and Git, and
+                connects out to the relay.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>XailonOrbit app</strong></td>
+              <td>Phone, tablet or browser</td>
+              <td>Where you chat with agents, approve actions and review changes.</td>
+            </tr>
+            <tr>
+              <td><strong>Relay</strong></td>
+              <td>Hosted, or your own server</td>
+              <td>
+                Forwards encrypted messages between the two. Default: <code>wss://xailon-relay.infinialabs.ai/ws</code>.
+              </td>
+            </tr>
+          </table>
+          <img
+            class="figure"
+            src="../assets/img/connected.jpg"
+            alt="Laptop and phone connected through an encrypted relay"
+            loading="lazy"
+          >
+          <p>
+            Both sides connect <em>out</em> to the relay, so you don't need to open ports, configure a router or run a
+            VPN. They pair with a secret <strong>Pairing ID</strong> and derive end-to-end encryption keys from it, so
+            the relay only ever sees ciphertext.
+          </p>
+        </section>
+
+        <section id="requirements">
+          <h2>2. Requirements</h2>
+          <ul>
+            <li>
+              <strong>Computer:</strong>
+              macOS, Linux (x64) or Windows (x64). Node.js 22+ for the npm install, or use Homebrew, Scoop or a source
+              build.
+            </li>
+            <li>
+              <strong>Phone:</strong>
+              iOS or Android, or a Chromium-based browser (Chrome, Edge) or Firefox for the browser extension.
+            </li>
+            <li>
+              <strong>Network:</strong>
+              outbound HTTPS/WebSocket (port 443) to the relay from both devices. No inbound ports.
+            </li>
+            <li>
+              <strong>An agent:</strong>
+              XailonCode is recommended. It is built in as the default; see <a href="#agents">Agents and ACP</a>.
+            </li>
+          </ul>
+        </section>
+
+        <section id="daemon">
+          <h2>3. Install the daemon</h2>
+          <p>Install <code>xailon-orbitd</code> on the computer where your code and agents live.</p>
+          <h3>npm (macOS, Linux x64, Windows x64)</h3>
+          <pre><code>npm install -g xailon-orbitd</code></pre>
+          <h3>Homebrew (macOS, Linux)</h3>
+          <pre><code>brew install infinialabs-ai/tap/xailon-orbitd</code></pre>
+          <h3>Scoop (Windows)</h3>
+          <pre><code>scoop bucket add infinialabs https://github.com/infinialabs-ai/scoop-bucket
+scoop install xailon-orbitd</code></pre>
+          <h3>From source</h3>
+          <pre><code>git clone https://github.com/infinialabs-ai/xailon-orbit.git
+cd xailon-orbit
+cargo install --path crates/daemon</code></pre>
+          <h3>Start it</h3>
+          <pre><code>xailon-orbitd start</code></pre>
+          <p>
+            <code>start</code>
+            registers an autostart service (LaunchAgent on macOS, <code>systemd --user</code> on Linux, a scheduled task
+            on Windows), starts the daemon in the background and prints your <strong>Pairing ID</strong> and a QR code.
+            Run <code>xailon-orbitd status</code> at any time to see them again.
+          </p>
+          <img
+            class="figure"
+            src="../assets/img/copy.jpg"
+            alt="xailon-orbitd start printing a pairing QR code"
+            loading="lazy"
+          >
+          <div class="note">
+            <p>
+              <b>Prefer a terminal window?</b>
+              Run <code>xailon-orbitd</code> (or <code>xailon-orbitd run</code>) to run in the foreground without
+              registering autostart.
+            </p>
+          </div>
+        </section>
+
+        <section id="app">
+          <h2>4. Install the app</h2>
+          <table>
+            <tr>
+              <th>Platform</th>
+              <th>How to get it</th>
+            </tr>
+            <tr>
+              <td>iOS</td>
+              <td>App Store <span class="badge">Coming soon</span></td>
+            </tr>
+            <tr>
+              <td>Android</td>
+              <td>
+                Google Play <span class="badge">Coming soon</span>. The APK will also be attached to each GitHub
+                release.
+              </td>
+            </tr>
+            <tr>
+              <td>Chrome / Edge</td>
+              <td>
+                Chrome Web Store and Edge Add-ons <span class="badge">Coming soon</span>. Opens as a side panel and a
+                DevTools panel.
+              </td>
+            </tr>
+            <tr>
+              <td>Firefox</td>
+              <td>Firefox Add-ons <span class="badge">Coming soon</span>. Opens as a sidebar.</td>
+            </tr>
+          </table>
+          <h3>Build the browser extension yourself</h3>
+          <p>Until the store listings are live, you can build and load the extension from source:</p>
+          <pre><code>git clone https://github.com/infinialabs-ai/xailon-orbit.git
+cd xailon-orbit
+corepack enable
+pnpm install
+pnpm --filter xailonorbit-extension build</code></pre>
+          <ol class="list">
+            <li>
+              <strong>Chrome / Edge:</strong>
+              open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, click
+              <strong>Load unpacked</strong>
+              and choose <code>packages/extension/dist/chrome</code>.
+            </li>
+            <li>
+              <strong>Firefox:</strong>
+              open <code>about:debugging#/runtime/this-firefox</code>, click <strong>Load Temporary Add-on</strong> and
+              choose <code>packages/extension/dist/firefox/manifest.json</code>.
+            </li>
+          </ol>
+          <h3>Build the mobile app yourself</h3>
+          <p>
+            The mobile apps are built with Tauri 2. With the Android SDK or Xcode installed, run
+            <code>pnpm -C packages/xailonorbit run tauri android dev</code>
+            (or <code>tauri ios dev</code>). Push notifications need your own Firebase project; everything else works
+            without one.
+          </p>
+        </section>
+
+        <section id="pair">
+          <h2>5. Pair your devices</h2>
+          <h3>Scan the QR code (recommended)</h3>
+          <ol class="list">
+            <li>On your computer, run <code>xailon-orbitd status</code> to show the QR code.</li>
+            <li>Open XailonOrbit. On first launch it opens <strong>Settings</strong> (Relay &amp; Remote Agent).</li>
+            <li>
+              Tap the scan button at the top right (<strong>Scan Pairing ID QR code</strong>) and point the camera at
+              the code.
+            </li>
+            <li>
+              XailonOrbit connects. The status changes from <em>Connecting to Relay</em> to connected and lists your
+              agents.
+            </li>
+          </ol>
+          <p>
+            The QR code is a link of the form <code>xailonorbit://connect?pairingId=…</code>. With a custom relay it
+            also carries <code>&amp;relayUrl=…</code>, so scanning configures both.
+          </p>
+          <h3>Enter the Pairing ID by hand</h3>
+          <p>
+            In Settings, paste the Pairing ID (it starts with <code>xop1_</code>) into the field and save. The app
+            connects automatically. A typed Pairing ID always uses the default relay. To use a custom relay, scan the QR
+            code instead.
+          </p>
+          <h3>More devices</h3>
+          <p>
+            Pair as many phones and browsers as you like with the same code. All paired devices share the same sessions.
+            Settings remembers <strong>Recent</strong> pairings, so you can switch between several computers.
+          </p>
+          <div class="note warn">
+            <p>
+              <b>Keep the Pairing ID secret.</b>
+              Anyone who has it can use your agents and read files on your computer. Don't share screenshots of it. If
+              it leaks, run <code>xailon-orbitd reset</code>.
+            </p>
+          </div>
+        </section>
+
+        <section id="agents">
+          <h2>6. Agents and ACP</h2>
+          <p>
+            XailonOrbit talks to agents through the open
+            <a href="https://agentclientprotocol.com" target="_blank" rel="noopener">Agent Client Protocol (ACP)</a>.
+            The daemon starts each agent as a local process and streams its work to your phone.
+          </p>
+          <h3>XailonCode (default)</h3>
+          <p>XailonCode is listed first and selected by default. The daemon starts it as <code>xailon acp</code>:</p>
+          <ol class="list">
+            <li>
+              If the <code>xailon</code> CLI is on your <code>PATH</code>, the daemon uses it, together with your
+              existing XailonCode configuration, models and logins.
+            </li>
+            <li>
+              Otherwise, on Apple Silicon Macs, the daemon downloads a pinned XailonCode release, verifies its SHA-256
+              checksum and keeps it in the daemon's data directory.
+            </li>
+          </ol>
+          <p>To install XailonCode yourself (recommended, and the only option on other platforms):</p>
+          <pre><code>curl -fsSL https://xailoncode.infinialabs.ai/install.sh | sh
+xailon configure   <span class="c"># choose your model provider</span></code></pre>
+          <p>Check that it works locally with <code>xailon doctor</code> before you connect from your phone.</p>
+          <h3>Free</h3>
+          <p>
+            A built-in agent based on OpenCode, limited to its free models. Pick it to try XailonOrbit without any API
+            key or login. It keeps its sessions separate from your own OpenCode.
+          </p>
+          <h3>Other ACP agents</h3>
+          <p>
+            Claude Code, Codex, Cursor, GitHub Copilot, Google Antigravity, OpenCode, Qwen Code, Kimi CLI and every
+            other agent in the ACP registry are available. The daemon refreshes the registry in the background. For each
+            agent it uses your installed CLI if one is on <code>PATH</code>; otherwise it downloads a managed binary or
+            runs it through <code>npx</code> / <code>uvx</code>.
+          </p>
+          <div class="note">
+            <p>
+              <b>Sign in on the computer first.</b>
+              Agents use their own accounts and API keys. Run the agent once in a terminal (for example
+              <code>claude</code>
+              or <code>codex</code>) and sign in, then use it from your phone.
+            </p>
+          </div>
+        </section>
+
+        <section id="using">
+          <h2>7. Using XailonOrbit</h2>
+          <h3>Sessions and working directories</h3>
+          <p>
+            Choose an agent, then tap <strong>New Session</strong> and browse to a folder on your computer (<strong
+              >Create session here</strong
+            >). Sessions are grouped by working directory and come from the agent itself, so sessions you start in a
+            terminal show up too. A new session is created on your computer when you send its first message.
+          </p>
+          <h3>Approvals and questions</h3>
+          <p>
+            When an agent asks for permission or asks you a question, a card appears above the composer. Answers are
+            delivered even if you reconnect or restart the app; the daemon keeps the request until you answer it or the
+            turn ends.
+          </p>
+          <h3>Files, Git and previews</h3>
+          <ul>
+            <li>Browse files, changes, diffs and commit history of the session's repository.</li>
+            <li>Attach images, text and files (up to 5 MB). Files are saved on your computer for the agent to read.</li>
+            <li>Open the HTML pages, charts, maps and live screens that agents produce, right in the conversation.</li>
+          </ul>
+          <h3>Voice</h3>
+          <p>
+            When the composer is empty, the send button becomes a voice button. Hold to talk, release to send, and hear
+            a short spoken summary of the reply.
+          </p>
+          <h3>Notifications</h3>
+          <p>
+            On iOS and Android, XailonOrbit notifies you when a prompt finishes. The notification contains only the
+            agent and session IDs.
+          </p>
+          <h3>Keep your computer awake</h3>
+          <pre
+          ><code>xailon-orbitd awake active    <span class="c"># stay awake for an hour after the last activity</span>
+xailon-orbitd awake plugged   <span class="c"># stay awake while on external power</span>
+xailon-orbitd awake never     <span class="c"># default: normal sleep</span></code></pre>
+        </section>
+
+        <section id="relay">
+          <h2>8. Relay: hosted or self-hosted</h2>
+          <p>
+            The relay is a small, protocol-agnostic WebSocket service. It stores undelivered encrypted messages briefly
+            so that nothing is lost when your phone goes offline, and it cannot read them.
+          </p>
+          <h3>Option A: the hosted relay (default)</h3>
+          <p>
+            Nothing to set up. Both the daemon and the app use <code>wss://xailon-relay.infinialabs.ai/ws</code> unless
+            you choose otherwise.
+          </p>
+
+          <h3>Option B: Docker on your own server</h3>
+          <pre><code>docker run -d --name xailon-relay --restart unless-stopped \
+  -p 39371:39371 -v xailon-relay-data:/data \
+  ghcr.io/infinialabs-ai/xailon-relay:main</code></pre>
+          <p>Or build it from source:</p>
+          <pre><code>git clone https://github.com/infinialabs-ai/xailon-relay.git
+cd xailon-relay
+cargo run --release -- --bind 0.0.0.0:39371 --database /var/lib/xailon-relay/relay.sqlite3</code></pre>
+          <p>Put it behind a TLS reverse proxy so clients can use <code>wss://</code>. For example, with Caddy:</p>
+          <pre><code>relay.example.com {
+  reverse_proxy 127.0.0.1:39371
+}</code></pre>
+          <table>
+            <tr>
+              <th>Option</th>
+              <th>Environment variable</th>
+              <th>Default</th>
+            </tr>
+            <tr>
+              <td><code>--bind</code></td>
+              <td><code>RELAY_BIND</code></td>
+              <td><code>0.0.0.0:39371</code></td>
+            </tr>
+            <tr>
+              <td><code>--database</code></td>
+              <td><code>RELAY_DATABASE</code></td>
+              <td><code>relay.sqlite3</code></td>
+            </tr>
+            <tr>
+              <td><code>--max-pending-messages</code></td>
+              <td><code>RELAY_MAX_PENDING_MESSAGES</code></td>
+              <td>100000 per ID and direction</td>
+            </tr>
+            <tr>
+              <td><code>--max-pending-bytes</code></td>
+              <td><code>RELAY_MAX_PENDING_BYTES</code></td>
+              <td>1 GiB per ID and direction</td>
+            </tr>
+            <tr>
+              <td><code>--pending-retention-secs</code></td>
+              <td><code>RELAY_PENDING_RETENTION_SECS</code></td>
+              <td>3600 (1 hour)</td>
+            </tr>
+            <tr>
+              <td><code>--device-retention-secs</code></td>
+              <td><code>RELAY_DEVICE_RETENTION_SECS</code></td>
+              <td>604800 (7 days)</td>
+            </tr>
+          </table>
+          <p>
+            Health check: <code>GET /health</code> returns <code>200 OK</code>. Run exactly one relay process per
+            database file.
+          </p>
+
+          <h3>Option C: your own Cloudflare account</h3>
+          <p>
+            The relay also ships as a Cloudflare Worker with Durable Objects (one per pairing), which runs on the
+            Workers Free plan and needs no server. From the <code>cloudflare/</code> folder of the relay repository:
+          </p>
+          <pre><code>cd xailon-relay/cloudflare
+npm install
+npx wrangler login              <span class="c"># or set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID</span>
+npx wrangler deploy</code></pre>
+          <p>
+            Then attach a custom domain to the <code>xailon-relay</code> Worker in the Cloudflare dashboard (<strong
+              >Workers &amp; Pages → Settings → Domains &amp; Routes</strong
+            >), or set it under <code>routes</code> in <code>wrangler.jsonc</code>. To forward push notifications, add
+            your Firebase service account with
+            <code>npx wrangler secret put FCM_SERVICE_ACCOUNT</code>.
+          </p>
+
+          <h3>Point XailonOrbit at your relay</h3>
+          <pre><code>xailon-orbitd restart --relay-url wss://relay.example.com/ws
+xailon-orbitd status   <span class="c"># the new QR code now includes your relay</span></code></pre>
+          <p>
+            Scan the new QR code on every device. The relay URL is saved for future starts. To go back to the hosted
+            relay, run <code>xailon-orbitd reset</code>, which also rotates the Pairing ID.
+          </p>
+        </section>
+
+        <section id="commands">
+          <h2>9. Daemon commands</h2>
+          <table>
+            <tr>
+              <th>Command</th>
+              <th>Description</th>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd start</code></td>
+              <td>Register autostart, start in the background and show the pairing QR code.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd stop</code></td>
+              <td>Stop the daemon and remove autostart.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd restart</code></td>
+              <td>Restart the background service.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd status</code></td>
+              <td>Show service status, PID, relay URL, Pairing ID and QR code.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd reset</code></td>
+              <td>Rotate the Pairing ID and clear local connection state. Installed agents and history are kept.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd awake [always|plugged|active|never|status]</code></td>
+              <td>Control sleep prevention.</td>
+            </tr>
+            <tr>
+              <td><code>xailon-orbitd</code> / <code>xailon-orbitd run</code></td>
+              <td>Run in the foreground.</td>
+            </tr>
+          </table>
+          <p>Global options, saved for future starts:</p>
+          <pre><code>xailon-orbitd restart --relay-url wss://relay.example.com/ws
+xailon-orbitd reset --pairing-id &lt;NEW_PAIRING_ID&gt;</code></pre>
+          <p>Run <code>xailon-orbitd --help</code> for the full reference.</p>
+        </section>
+
+        <section id="security">
+          <h2>10. Security model</h2>
+          <ul>
+            <li>
+              <strong>Encryption:</strong>
+              messages are sealed with XChaCha20-Poly1305 using keys derived with HKDF-SHA256 from the Pairing ID. The
+              relay routes by a separately derived ID and never learns the secret.
+            </li>
+            <li><strong>No plaintext fallback:</strong> encrypted pairings never fall back to plaintext.</li>
+            <li>
+              <strong>One credential:</strong>
+              the Pairing ID is the only credential. Every paired device has full access, including to files on your
+              computer, with no directory restriction.
+            </li>
+            <li>
+              <strong>Revoking access:</strong>
+              individual devices can't be revoked. Run <code>xailon-orbitd reset</code> to rotate the ID and pair the
+              devices you still trust again.
+            </li>
+            <li><strong>No open ports:</strong> the daemon only makes outbound connections.</li>
+          </ul>
+        </section>
+
+        <section id="data">
+          <h2>11. Data and logs</h2>
+          <table>
+            <tr>
+              <th>OS</th>
+              <th>Daemon data directory</th>
+            </tr>
+            <tr>
+              <td>macOS</td>
+              <td><code>~/Library/Application Support/xailonorbit/</code></td>
+            </tr>
+            <tr>
+              <td>Linux</td>
+              <td><code>$ { XDG_DATA_HOME:-~/.local/share}/xailonorbit/</code></td>
+            </tr>
+            <tr>
+              <td>Windows</td>
+              <td><code>%LOCALAPPDATA%\xailonorbit\</code></td>
+            </tr>
+          </table>
+          <p>
+            Logs are written to <code>logs/xailon-orbitd.YYYY-MM-DD.log</code>, one file per day, and the last 7 are
+            kept. Start with <code>RUST_LOG=debug</code> for more detail. Save any logs you need before running
+            <code>reset</code>.
+          </p>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>12. Troubleshooting</h2>
+          <table>
+            <tr>
+              <th>Symptom</th>
+              <th>What to do</th>
+            </tr>
+            <tr>
+              <td>Stuck on “Connecting to Relay”</td>
+              <td>
+                Check that the phone is online and that your network allows WebSocket connections to the relay. With a
+                self-hosted relay, open <code>https://your-relay/health</code> in the phone's browser.
+              </td>
+            </tr>
+            <tr>
+              <td>Connected to the relay, but the host never answers</td>
+              <td>
+                Run <code>xailon-orbitd status</code> on the computer. Make sure the Pairing ID and relay match the app,
+                then <code>xailon-orbitd restart</code>.
+              </td>
+            </tr>
+            <tr>
+              <td>“Relay connection was preempted”</td>
+              <td>
+                Another client is using the same device identity. Close it, or tap <strong>Reset App</strong> in
+                Settings.
+              </td>
+            </tr>
+            <tr>
+              <td>An agent fails to start</td>
+              <td>
+                Run the agent's CLI on the computer (for XailonCode: <code>xailon doctor</code>), sign in if needed, and
+                check the daemon logs.
+              </td>
+            </tr>
+            <tr>
+              <td>The app asks you to upgrade the daemon</td>
+              <td>
+                Update <code>xailon-orbitd</code> (see below). The app and the daemon should stay on matching versions.
+              </td>
+            </tr>
+            <tr>
+              <td>Still stuck</td>
+              <td>
+                Run <code>xailon-orbitd reset</code>, tap <strong>Reset App</strong> in Settings, and scan the new code.
+                Remote history is preserved.
+              </td>
+            </tr>
+          </table>
+          <p>
+            Still need help? Email <a href="mailto:hello@infinialabs.ai">hello@infinialabs.ai</a>. Never include your
+            Pairing ID.
+          </p>
+        </section>
+
+        <section id="uninstall">
+          <h2>13. Update and uninstall</h2>
+          <h3>Update</h3>
+          <pre><code>xailon-orbitd stop
+npm install -g xailon-orbitd@latest   <span class="c"># or: brew upgrade xailon-orbitd / scoop update xailon-orbitd</span>
+xailon-orbitd start</code></pre>
+          <p>
+            If you move your Node installation or npm's global directory, run <code>xailon-orbitd restart</code> from
+            the new installation so autostart uses the new path.
+          </p>
+          <h3>Uninstall</h3>
+          <pre
+          ><code>xailon-orbitd stop                    <span class="c"># stops the daemon and removes autostart</span>
+npm uninstall -g xailon-orbitd</code></pre>
+          <p>
+            Then delete the data directory listed in <a href="#data">Data and logs</a> if you want to remove downloaded
+            agents and settings.
+          </p>
+        </section>
+
+        <section id="privacy">
+          <h2>14. Privacy</h2>
+          <p>
+            XailonOrbit has no accounts and no analytics. The relay forwards ciphertext and keeps undelivered messages
+            for up to an hour. For push notifications, the app registers with Firebase Cloud Messaging and gives its
+            token to your daemon. When a task finishes, the daemon sends the token, agent ID and session ID to the
+            notification forwarder at <code>xailon-relay.infinialabs.ai/push</code>. Notifications never contain prompts
+            or replies.
+          </p>
+          <p>Questions? <a href="mailto:hello@infinialabs.ai">hello@infinialabs.ai</a></p>
+        </section>
+      </main>
+    </div>
+
+    <footer>
+      <div class="wrap">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <a class="logo" href="../"
+              ><img src="../assets/logo.svg" alt=""><span class="logo-name">XailonOrbit</span></a
+            >
+            <p>
+              The mobile connector for XailonCode. Built by Infinia Labs, the R&amp;D division of Infinia Technologies.
+            </p>
+            <a href="https://infinialabs.ai" target="_blank" rel="noopener"
+              ><img class="labs" src="../assets/logo-labs-light.svg" alt="Infinia Technologies"></a
+            >
+          </div>
+          <div>
+            <h4>Product</h4>
+            <ul>
+              <li><a href="../#features">Features</a></li>
+              <li><a href="../#install">Install</a></li>
+              <li><a href="../#security">Security</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Docs</h4>
+            <ul>
+              <li><a href="#daemon">Install the daemon</a></li>
+              <li><a href="#relay">Self-host the relay</a></li>
+              <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Infinia Labs</h4>
+            <ul>
+              <li><a href="https://xailoncode.infinialabs.ai/" target="_blank" rel="noopener">XailonCode</a></li>
+              <li><a href="https://infinialabs.ai" target="_blank" rel="noopener">infinialabs.ai</a></li>
+              <li><a href="mailto:hello@infinialabs.ai">hello@infinialabs.ai</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <span>© 2026 Infinia Labs. MIT licensed, based on AgentDeck by mantou132.</span>
+          <span><a href="#privacy">Privacy</a></span>
+        </div>
+      </div>
+    </footer>
+
+    <script src="../assets/site.js?v=1"></script>
+  </body>
+</html>

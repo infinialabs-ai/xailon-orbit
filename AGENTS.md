@@ -14,12 +14,12 @@
 - `packages/extension/`：XailonOrbit 浏览器扩展（Chrome & Firefox）。详情参见 [`packages/extension/CLAUDE.md`](packages/extension/CLAUDE.md)。
 - `crates/daemon/`：独立后台守护服务 `xailon-orbitd`，含 CLI、统一存储布局、Relay 配置、防自动睡眠与本地状态重置。详情参见 [`crates/daemon/CLAUDE.md`](crates/daemon/CLAUDE.md)。
 - `crates/xailonorbit/`：Tauri 2 原生入口、配置和 Android / iOS 原生工程。
-- `website/`：官网落地页（`https://xailon-orbit.infinialabs.ai`），单个静态 `index.html`，不经构建；部署方式待定。
+- `website/`：官网与用户指南（`https://xailon-orbit.infinialabs.ai`），静态 `index.html`、`guide/index.html` 与 `assets/`（沿用 infinialabs.ai 设计规范），不经构建；以 Cloudflare Worker `xailon-orbit-site` 部署：`cd website && npx wrangler deploy`（需 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`）。用户指南随 CLI、配对、Relay 行为变化同步更新。
 - `.github/workflows/`：
-  - `ci.yml`：push 到 main 与 PR 时运行全局检查（Biome、tsc、前端与扩展测试和构建、`cargo check` 与 Daemon 测试）；Tauri crate 编译需要前端构建产物与系统 WebView，所以 Rust 检查跑在 macOS。
+  - 不设 push / PR 自动 CI（避免 Actions 额度），提交前在本地运行「常用全局命令」中的检查；发布 workflow 只由 tag 或手动触发。
   - `release.yml`：Daemon 多平台构建、npm OIDC 分发、扩展打包与 GitHub Release / 商店发布流水线（支持 tag 推送触发与 `workflow_dispatch` 手动测试）；npm 实现见 `crates/daemon/CLAUDE.md`。
   - `release-android.yml`：Android 签名构建与 Google Play 发布。
-  - `release-ios.yml`：iOS 签名构建；push 到 main 上传 TestFlight（版本号为最新 tag 的下一个 patch），tag 提交 App Store 发布；商店资料与首次上架清单见 `distribution/appstore/`。
+  - `release-ios.yml`：iOS 签名构建；tag 提交 App Store 发布（手动触发时上传 TestFlight）；商店资料与首次上架清单见 `distribution/appstore/`。
   - `bump-packages.yml`：版本自动递增与包依赖管理。
 - `biome.json`：代码风格格式化与 Lint 配置。
 

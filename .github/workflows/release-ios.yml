@@ -2,7 +2,6 @@ name: Release iOS
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
@@ -10,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  # main 上连续推送只保留最新一次 TestFlight 构建；tag 发版不被取消
+  # main 上手动触发只保留最新一次 TestFlight 构建；tag 发版不被取消
   group: release-ios-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
@@ -129,7 +128,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to TestFlight
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           IPA: ${{ steps.ipa.outputs.path }}
         run: |
