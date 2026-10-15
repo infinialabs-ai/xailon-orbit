@@ -1,0 +1,198 @@
+import { Browser } from '@mantou/tap-ui/elements/browser';
+import { Stack, type TapStackElement } from '@mantou/tap-ui/elements/stack';
+import { Toast } from '@mantou/tap-ui/elements/toast';
+import { sleep } from '@mantou/tap-ui/lib/timer';
+import { share } from '@vnidrop/tauri-plugin-share';
+import { onWebProxyState, toWebproxyUrl } from 'tauri-plugin-webproxy-api';
+import { agentApi } from './agent/transport';
+import { i18n } from './i18n';
+import { parseMessageLink } from './lib/links';
+import { toPreviewUrl } from './lib/preview';
+import { icons } from './styles/icons';
+
+export const openWebBrowser = async (url: string, title = '', stack?: TapStackElement) => {
+  let currentUrl = url;
+  const result = Browser.open({
+    src: toWebproxyUrl(url),
+    title,
+    stack,
+    actions: [
+      {
+        label: i18n.get('browser.share'),
+        handler: async () => {
+          (navigator.canShare?.() ? navigator.share : share)({
+            title: result.browser.title || title,
+            url: currentUrl,
+          });
+        },
+      },
+      {
+        label: i18n.get('global.copy'),
+        handler: async () => {
+          await navigator.clipboard.writeText(currentUrl);
+          Toast.open('success', i18n.get('global.copied'));
+        },
+      },
+    ],
+  });
+  await new Promise((res) => requestAnimationFrame(res));
+  onWebProxyState(result.browser.contentWindow, (state) => {
+    const url = new URL(state.url);
+    if (!['https:', 'http:', 'webproxy:'].includes(url.protocol)) {
+      // openExtraUri(url.href);
+      return;
+    }
+    if (state.target === '_blank') {
+      openWebBrowser(state.url, state.title, stack);
+    } else {
+      result.browser.title = state.title;
+      result.browser.src = toWebproxyUrl(state.url);
+      currentUrl = state.url;
+    }
+  });
+  return result;
+};
+
+type PreviewOptions = {
+  /** The page extends under a floating navbar */
+  edgeToEdge?: boolean;
+  /** No navbar, close with the edge swipe-back gesture */
+  headerless?: boolean;
+  stack?: TapStackElement;
+};
+
+export const openPreview = (path: string, { edgeToEdge, headerless, stack }: PreviewOptions = {}) => {
+  const result = Browser.open({
+    src: toPreviewUrl(path, edgeToEdge || headerless),
+    floatheader: edgeToEdge,
+    headerless,
+    title: path.split(/[\\/]/).pop(),
+    stack,
+    actions: [
+      {
+        label: i18n.get('global.reload'),
+        icon: icons.refresh,
+        handler: () => {
+          result.browser.reload();
+        },
+      },
+    ],
+  });
+  return result;
+};
+
+export const openScreen = (target: string) => {
+  Stack.push({
+    content: html`<deck-screen-page .target=${target}></deck-screen-page>`,
+    gesture: true,
+  });
+};
+
+export const openMap = (source: string) => {
+  Stack.push({
+    content: html`<deck-map-page .source=${source}></deck-map-page>`,
+    gesture: true,
+  });
+};
+
+export const openFileBrowser = (
+  path: string,
+  cwd: string,
+  stack?: TapStackElement,
+  options?: { replace?: boolean },
+) => {
+  (stack || Stack)[options?.replace ? 'replace' : 'push']({
+    content: html`<deck-file-browser-page .path=${path} .cwd=${cwd}></deck-file-browser-page>`,
+    gesture: true,
+  });
+};
+
+export const openFileViewer = (path: string, cwd: string, line?: number, stack?: TapStackElement) => {
+  (stack || Stack).push({
+    content: html`<deck-file-viewer .path=${path} .cwd=${cwd} .line=${line}></deck-file-viewer>`,
+    gesture: true,
+  });
+};
+
+/** Shows workspace changes when commit is omitted */
+export const openChanges = (cwd: string, commit?: string) => {
+  Stack.push({
+    content: html`<deck-changes-page .cwd=${cwd} .commit=${commit}></deck-changes-page>`,
+    gesture: true,
+  });
+};
+
+export const openChangesDiff = (path: string, cwd: string, commit?: string) => {
+  Stack.push({
+    content: html`<deck-changes-diff-page .path=${path} .cwd=${cwd} .commit=${commit}></deck-changes-diff-page>`,
+    gesture: true,
+  });
+};
+
+export const openGitLog = (cwd: string) => {
+  Stack.push({
+    content: html`<deck-git-log-page .cwd=${cwd}></deck-git-log-page>`,
+    gesture: true,
+  });
+};
+
+export const openPath = async (path: string, cwd: string, line?: number, stack?: TapStackElement) => {
+  if (path.endsWith('/') || path.endsWith('\\') || path === '.' || path === '..') {
+    openFileBrowser(path, cwd, stack);
+    return;
+  }
+  if (line) {
+    openFileViewer(path, cwd, line, stack);
+    return;
+  }
+  // Show for at least 500ms to avoid flickering on fast returns
+  const closeToast = Toast.open({ type: 'loading', content: i18n.get('file.opening'), duration: Infinity });
+  const [isDir] = await Promise.all([agentApi.isDirectory(path, cwd), sleep(500)]);
+  closeToast();
+  if (isDir) {
+    openFileBrowser(path, cwd, stack);
+  } else {
+    openFileViewer(path, cwd, undefined, stack);
+  }
+};
+
+export const openMessageLink = (event: MouseEvent, cwd: string) => {
+  if (event.defaultPrevented || event.button !== 0) return false;
+  const anchor = event
+    .composedPath()
+    .find((element): element is HTMLAnchorElement => element instanceof HTMLAnchorElement);
+  const href = anchor?.getAttribute('href');
+  if (!href || href.startsWith('#')) return false;
+  event.preventDefault();
+  const link = parseMessageLink(href);
+  if (!link) return false;
+  const stack = anchor ? Stack.getClosestStack(anchor) : undefined;
+  if (link.type === 'web') {
+    openWebBrowser(link.url, anchor?.textContent?.trim() || link.url, stack);
+  } else {
+    openPath(link.path, cwd, link.line, stack);
+  }
+  return true;
+};
+
+export const openSettings = () => {
+  Stack.push({
+    content: html`<xailonorbit-settings-page class="block h-full" .canGoBack=${true}></xailonorbit-settings-page>`,
+    gesture: true,
+  });
+};
+
+export const openSession = (sessionId: string, options?: { replace?: boolean }) => {
+  const method = options?.replace ? Stack.replace : Stack.push;
+  method({
+    animated: true,
+    content: html`
+      <xailonorbit-session-page class="block h-full" .sessionId=${sessionId}></xailonorbit-session-page>
+    `,
+    gesture: true,
+  });
+};
+
+export const replaceSession = (sessionId: string) => {
+  openSession(sessionId, { replace: true });
+};

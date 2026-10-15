@@ -1,0 +1,86 @@
+import unpluginGem from 'unplugin-gem/rspack';
+
+/** @type {import('extension').FileConfig} */
+
+const profile = (name) => `./dist/extension-profile-${name}`;
+
+export default {
+  commands: {
+    dev: {
+      browser: 'chrome',
+      startingUrl: 'https://example.com',
+      profile: profile('chrome'),
+    },
+    build: {
+      browser: 'chrome,firefox',
+      zip: true,
+    },
+  },
+  config(config) {
+    config.target = ['web', 'es2024', 'browserslist:chrome >= 125, firefox >= 128'];
+    config.optimization ??= {};
+    config.optimization.splitChunks = {
+      ...config.optimization.splitChunks,
+      cacheGroups: {
+        ...config.optimization.splitChunks?.cacheGroups,
+        mermaidParser: {
+          test: /[\\/]@mermaid-js[\\/]parser[\\/]/,
+          name: 'mermaid-parser',
+          chunks: 'async',
+          minChunks: 2,
+          priority: 30,
+          reuseExistingChunk: true,
+          enforce: true,
+        },
+      },
+    };
+    config.module ??= {};
+    config.module.rules ??= [];
+    // Compile TypeScript from workspace and relay-client-ts
+    config.module.rules.unshift({
+      test: /\.ts$/,
+      use: [
+        {
+          loader: 'builtin:swc-loader',
+          options: {
+            jsc: {
+              target: 'es2024',
+              parser: { syntax: 'typescript', decorators: true },
+              transform: { decoratorVersion: '2023-11' },
+            },
+          },
+        },
+      ],
+    });
+    // Use local vendor for dy-code-block Prism, see loaders/prism-local.mjs
+    config.module.rules.unshift({
+      test: /\.js$/,
+      include: (filename) => /[\\/]@mantou[\\/]tap-ui[\\/]elements[\\/]code-block\.js$/.test(filename),
+      use: [{ loader: new URL('./loaders/prism-local.mjs', import.meta.url).pathname }],
+    });
+    // Use local vendor for @gem-bind/diff2html styles, see loaders/diff2html-local.mjs
+    config.module.rules.unshift({
+      test: /\.js$/,
+      include: (filename) => /[\\/]@gem-bind[\\/]diff2html[\\/]dist[\\/]index\.js$/.test(filename),
+      use: [{ loader: new URL('./loaders/diff2html-local.mjs', import.meta.url).pathname }],
+    });
+    config.plugins ??= [];
+    config.plugins.push(
+      unpluginGem({
+        include: /^(?!.*[\\/]node_modules[\\/]).*\.js$/,
+        styleMinify: true,
+        selectorCompatible: true,
+        autoImport: {
+          extends: 'gem',
+          elements: {
+            'pages/elements': {
+              'agent-*': '/*',
+            },
+          },
+        },
+        autoImportDts: 'auto-import.d.ts',
+      }),
+    );
+    return config;
+  },
+};

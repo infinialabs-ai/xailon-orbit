@@ -1,0 +1,203 @@
+# Agent Rules
+
+1. 遇到没有明确的事情不要自由发挥，应该询问确定。
+2. 始终根据目的站在全局视角下考虑问题，如果有更简洁的方案应该提出来。
+3. 结构、入口或构建方式变化时同步更新本文档及对应子目录 CLAUDE.md，仍要保持精简；外层只保留导航、公用运行约束和全局开发规范，各子项目的实现细节下沉到各自目录。
+4. 只处理有实际依据的场景；不为不会发生的情况增加防御逻辑或不必要的复杂度。
+5. 测试文件是服务于业务代码的，不要为了测试去明显增加业务代码复杂度。
+
+# 项目导航
+
+项目为 monorepo 结构（pnpm workspace + Cargo workspace）：
+
+- `packages/xailonorbit/`：XailonOrbit 客户端前端工程、移动端适配与本地持久化。详情参见 [`packages/xailonorbit/CLAUDE.md`](packages/xailonorbit/CLAUDE.md)。
+- `packages/extension/`：XailonOrbit 浏览器扩展（Chrome & Firefox）。详情参见 [`packages/extension/CLAUDE.md`](packages/extension/CLAUDE.md)。
+- `crates/daemon/`：独立后台守护服务 `xailon-orbitd`，含 CLI、统一存储布局、Relay 配置、防自动睡眠与本地状态重置。详情参见 [`crates/daemon/CLAUDE.md`](crates/daemon/CLAUDE.md)。
+- `crates/xailonorbit/`：Tauri 2 原生入口、配置和 Android / iOS 原生工程。
+- `website/`：官网落地页（`https://xailon-orbit.infinialabs.ai`），单个静态 `index.html`，不经构建；部署方式待定。
+- `.github/workflows/`：
+  - `ci.yml`：push 到 main 与 PR 时运行全局检查（Biome、tsc、前端与扩展测试和构建、`cargo check` 与 Daemon 测试）；Tauri crate 编译需要前端构建产物与系统 WebView，所以 Rust 检查跑在 macOS。
+  - `release.yml`：Daemon 多平台构建、npm OIDC 分发、扩展打包与 GitHub Release / 商店发布流水线（支持 tag 推送触发与 `workflow_dispatch` 手动测试）；npm 实现见 `crates/daemon/CLAUDE.md`。
+  - `release-android.yml`：Android 签名构建与 Google Play 发布。
+  - `release-ios.yml`：iOS 签名构建；push 到 main 上传 TestFlight（版本号为最新 tag 的下一个 patch），tag 提交 App Store 发布；商店资料与首次上架清单见 `distribution/appstore/`。
+  - `bump-packages.yml`：版本自动递增与包依赖管理。
+- `biome.json`：代码风格格式化与 Lint 配置。
+
+# 全局运行与通信约束
+
+- **Relay 连接约定**：App 经 `relay-client-ts` 连接 Relay endpoint 2，xailon-orbitd 使用 endpoint 1；地址见 `packages/xailonorbit/src/config.ts`。
+- **端到端加密（E2EE）**：普通 UUID 保持明文；`xop1_` 配对 ID 只留在两端，Relay 使用派生路由 ID。加密层只负责消息加解密，不保存消息状态；不允许自动退回明文。
+- **会话状态机制**：新会话先建本地待创建会话（App 中称 pending session），首次发送才向远端 create；打开已有会话保留 close → load，手机端与扩展端不能依赖页面卸载时 close。
+- **连接与重试**：host 握手成功才算 connected。普通重连保留 SDK 消息状态；短请求有超时，prompt 不套相同的固定短时限。等待用户输入的权限请求与问题（ACP form elicitation）由 daemon 保存，以通知投递、`agent_user_input_respond` 作答，App 每次连上 host 都经 `agent_prompts_running` 补回，不依赖请求重投。
+- **投递方式**：调用通过 `CallOptions.ephemeral` 显式声明走 Relay ephemeral（不落库、不 ack，host 离线时立即失败），host 对其 event / 回复同样走 ephemeral；目前只有 `file_read` 和 `screen_capture`，其余请求、回复与通知都走可靠投递。`file_read` 的 raw 与图片回复、`screen_capture` 的截图在 Relay 上以二进制帧传输（配对为 `xop1_` 时加密）。旧版 relay-client 无法解析 ephemeral 帧，App 与 daemon 需一起升级。
+- **重置与清理**：异常必须保留重试或 settings 重置入口。重置重载文档并清理本地 Relay 消息状态，保留配对和设备标识；不删除远端历史，也不保证停止远端任务。
+
+# 前端开发（Gem 规范与语法指南）
+
+所有前端项目（`packages/xailonorbit`、`packages/extension`）均统一使用 Gem 框架、Tap UI / Duoyun UI 和最新 ECMAScript 语法。
+
+- 对象参数的内联类型较长、导致参数声明多行展开时，提取为命名类型。
+- 函数调用前不加无必要的 `void`；需要等待时使用 `await`，错误处理保持显式。
+- `unplugin-gem` 自动导入 Gem 成员与项目自定义元素，无需手动导入；开发期 HMR 由插件处理，不配置 Gem helper `preEntry`。
+- 布局优先 Tailwind utility，Shadow DOM 内不能使用。Light DOM 样式用 `:scope`，Shadow DOM 用 `:host`；通过 `css` / `@adoptedStyle` 共享样式，避免模板内联样式。
+- 元素文件名去前缀的标签名，继承 `GemElement`；使用 ES 装饰器（2023-11 标准），不使用已弃用的生命周期函数，也不额外声明自定义元素类型。
+- 用 `@property` / attribute 装饰器定义输入；不要在元素内部修改输入，attribute 不赋默认值。内部数据用 `createState`，CSS 状态用 `@state`；优先使用 `#` 私有字段。
+- `@memo` / `@effect` 用依赖数组控制执行，effect 返回清理函数；`@template` 定义模板，支持 `v-if`、ref 和属性展开。
+- 全局状态用 `createStore` / `@connectStore`；事件用 `@emitter`，跨 Shadow DOM 冒泡用 `@globalemitter`；part / slot 用静态装饰字段。
+- Toast 的消息文案应该适当简短
+
+### Gem Syntax Example
+
+```ts
+// 如果需要全局状态，就可以创建一个 Store
+// 也许是从其他模块中导入的
+const store = createStore({
+  globalCount: 1,
+  text: '',
+});
+
+// 一个更新 Store 的函数，Store 即是个数据对象，也可以用来更新内容
+// 一般和 Store 的定义写在模块中，也可能没有这样的函数，因为可以直接调用 `store({})` 更新
+const addCount = () => store({ globalCount: store.globalCount + 1 });
+
+// 创建一个给元素实例用的主题
+// 当元素的样式基于元素的属性时使用这种方法
+// 这是个特殊的主题，在应用到元素时他也是个装饰器，作用是用来反应元素属性的变化来更改主题值
+const elementTheme = createDecoratorTheme({ color: 'red' });
+
+// 用 `css` 创建 Gem 元素可挂载的样式表，可以使用 CSS 嵌套语法
+// 只有元素通过 `@shadow` 定义成了 Shadow DOM，CSS 中才能使用 `:host`
+// 否则使用 `:scope`，请注意区分他们的使用方法而不是简单的替换
+// 不要在模板内写内联样式，以此种方式定义的样式可以共享，而且和 DOM 分离
+// 如果项目定义了主题，CSS 规则值可以从主题读取
+const style = css`
+  :scope {
+    display: block;
+    color: ${theme.textColor};
+  }
+`;
+
+// 复杂的元素，可以使用这个方案编写样式表，在模板中用 `style1.header` 来引用类名
+const style1 = css({
+  // `$` 表示 `:host` 或 `:scope`
+  $: `
+    font-size: small;
+  `,
+  content: `
+    font-size: 24px;
+    color: ${elementTheme.color};
+  `,
+});
+
+// 自定义元素标签名，使用统一的 `dy` 命名空间
+@customElement('dy-test')
+// 将创建的样式表挂载到元素上，使用多次就可以挂载多个样式表
+@adoptedStyle(style)
+@adoptedStyle(style1)
+// 将全局 store 链接到元素上，store 更新时驱动元素更新，使用多次就可以链接多个 store
+@connectStore(store)
+// 默认是 Light DOM，只有使用了 `@shadow()` 才是 Shadow DOM，参数是 `ShadowRootInit`
+@shadow()
+// 一般不需要使用，只有该元素的内容需要能被外部样式化时才使用
+@light({ penetrable: true })
+// 指定元素渲染不会阻塞主线程，如果这个元素需要一次渲染很多个实例，可以使用
+@async()
+// 用来指定元素的 ARIA 属性，加强元素的可访问性
+@aria({ role: 'region' })
+// 这里的元素类名，`Duoyun` 是 `dy` 的全称，后面要加 `Element`，类似原生 HTML 元素类名
+class DuoyunTestElement extends GemElement {
+  // 定义元素的 part，使用静态字段可以让外部引用 part 名称，不需要设置初始值，状态器会提供一个同名初始值
+  static @part img: string;
+  // 定义元素的 slot，和 `@part` 一样的原则
+  static @slot content: string;
+  // 指定一个称为 `src` 的 Attribute，当没有赋值时默认解析成空字符串
+  @attribute src: string;
+  // 指定一个称为 `count` 的 Attribute，但解析成数字，当没有赋值时默认解析成 `0`
+  @numattribute count: number;
+  // 指定一个称为 `show` 的 Attribute，但解析成布尔值，当没有赋值时默认解析成 `false`
+  @boolattribute show: boolean;
+  // 当 Attribute 不能表示的属性时用 Property 表示，由于用户可以不传递属性，所以总要处理为空的情况，更改时会触发元素重新渲染
+  @property data?: {};
+  // 定义了一个 `display-content` 事件，直接调用触发，参数是自定义事件的 `detail` 属性
+  // 只需要指定类型，类型中的参数是自定义事件的 `detail` 属性，`this.displayContent(true)` 触发
+  // 很多时候传递数据，就使用 `null` 占位
+  // `@globalemitter` 可以穿透 ShadowDOM 进行冒泡
+  @emitter displayContent: Emitter<boolean>;
+  // 定义 CSS 状态，仅仅是用来供外部 CSS 选择器使用，例如 `dy-test:state(open)`
+  // 修改方法：`this.open = true`，没有特别的限制
+  @state open: boolean;
+
+  // 创建一个 { value?: HTMLImageElement } 对象，用来访问 DOM
+  #imgRef = createRef<HTMLImageElement>();
+  // 创建一个内部状态对象，`this.#state({ ... })` 来更新状态
+  // 元素内部不应该更新元素的 Attribute/Property，就像原生元素一样
+  // 注意和 CSS 状态 `@state` 无关
+  #state = createState({ internalCount: 1 });
+
+  // Attribute 不要赋初始值，因为 DOM 序列化会多出一些内容，如果需要默认值，可以定义一个 `getter`
+  // Property 可以赋初始值，但也同样可以用 `getter`
+  get #src() {
+    return this.src || 'test';
+  }
+
+  // 一些复杂计算可以使用 `@memo`，他的参数是一个函数，参数是当前实例，返回一个依赖数组
+  // 在元素每次渲染前执行，只有依赖数组有更改时才会执行函数内容
+  // 基于 `@memo` 实现了 `@willMount`
+  @memo((i) => [i.src])
+  get #text() {
+    return this.src.repeat(10);
+  }
+
+  // 每次渲染后的副作用，参数和 `@memo` 一样，没有参数时每次都执行
+  // 返回的函数会作为清理函数，在下次调用前执行
+  // 类似 React 的 `useLayoutEffect`
+  // 基于 `@effect` 实现了 `@mounted` `@unmounted`
+  @effect()
+  #print = () => {
+    console.log('updated');
+    return () => console.log('clear');
+  }
+
+  // `@template` 指定模板渲染函数，参数是一个条件函数，可以为不同条件指定不同渲染内容
+  // 不提供条件函数时直接认为满足条件
+  @template()
+  #content = () => {
+    const imgProps = { dataTest: 1 };
+    // 模板语法基于 lit-html，添加了 Vue 的 `v-if` 语法、Ref 语法和剩余属性语法
+    // 必要时候使用 `classMap` `styleMap` `partMap` `exportPartsMap`
+    return html`
+      <img ${this.#imgRef} ${imgProps} src=${this.#src} part=${DuoyunTestElement.part} />
+      <div class=${classMap({ div: true })} v-if=${this.show}>Show</div>
+      <div v-else class=${style1.content} style=${styleMap({ fontSize: '10px' })}>None</div>
+    `;
+  }
+
+  // 当元素更新后，会根据依赖是否变化重新计算主题，不提供依赖函数则每次更新都更新主题
+  @elementTheme((i) => [i.show])
+  #updateTheme = () => ({ color: this.show ? 'red' : 'blue' });
+
+  // 渲染出错时的后备内容，只有可能会渲染出错时才需要提供后备模板内容
+  @fallback()
+  #errorContent = (err) => {
+    return html`Error: ${err}`;
+  }
+
+  // Gem 元素使用 ES 装饰器定义特性，装饰器本身就完整的表示了意义，所以不需要额外写自定义元素声明
+  // Gem 元素不要使用生命周期函数，应该使用各种装饰器装饰普通函数，生命周期已经弃用了!!!
+  // 应该尽量使用 ES 私有字段（`#aaa`）来替代类方法，这样没有 `this` 指向的问题
+}
+```
+
+# 常用全局命令
+
+- `pnpm run lint`：Biome 全局代码风格检查；`pnpm run lint --write`：检查并修复。
+- `cargo check`：Rust Workspace 全局类型检查。
+- `pnpm -r test`：运行全工作区前端与扩展自动化测试。
+- `cargo test -p xailonorbit-daemon`：Daemon 单元测试。
+- 提交前依次运行上述检查；Husky 通过 lint-staged 对暂存文件执行 Biome（`pnpm install` 后生效）。
+
+# 发布
+
+- 推送 `vX.Y.Z` tag 触发全部发布，版本号取自 tag：Daemon 多平台二进制 → npm / Homebrew（`infinialabs-ai/homebrew-tap`）/ Scoop（`infinialabs-ai/scoop-bucket`）/ GitHub Release；扩展同步 `manifest.json` 版本后发布到 Chrome、Edge、Firefox 商店；Android 同步 `tauri.conf.json` 版本，APK/AAB 附到 Release，AAB 提交 Google Play Production 审核；iOS 以 run number 为 build 号构建 IPA，经 fastlane 同步 `distribution/appstore/metadata` 后提交 App Store 审核，通过后自动发布。
+- 可选：打 tag 前更新 `distribution/whatsnew/`（每种语言不超过 500 字符）作为 Google Play 与 App Store 更新说明。
+- 所需 Secrets 以各 workflow 文件中的引用为准。

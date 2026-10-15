@@ -1,0 +1,19 @@
+import { initApp } from '@mantou/tap-ui/helper/webapp';
+import { startPreviewServer } from './agent/preview';
+import { startPushNotifications } from './agent/push';
+
+import { startApp } from './state/app';
+
+import './styles/theme';
+import './app';
+import './pages/session-list';
+import './pages/session';
+import './pages/settings';
+
+initApp({
+  template: html`<xailonorbit-app class="block h-full"></xailonorbit-app>`,
+});
+
+startApp();
+startPushNotifications();
+startPreviewServer();

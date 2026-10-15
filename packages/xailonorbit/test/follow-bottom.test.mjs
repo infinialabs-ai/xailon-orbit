@@ -1,0 +1,251 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import vm from 'node:vm';
+import ts from 'typescript';
+
+const source = readFileSync(new URL('../src/lib/follow-bottom.ts', import.meta.url), 'utf8');
+const { outputText } = ts.transpileModule(source, {
+  compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.CommonJS },
+});
+
+function fixture({ active = true } = {}) {
+  const frames = new Map();
+  const observers = [];
+  let nextFrame = 0;
+  const exports = {};
+  vm.runInNewContext(outputText, {
+    exports,
+    requestAnimationFrame: (callback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    },
+    cancelAnimationFrame: (id) => frames.delete(id),
+    ResizeObserver: class {
+      targets = new Set();
+      constructor(callback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(target) {
+        this.targets.add(target);
+      }
+      disconnect() {
+        this.targets.clear();
+      }
+    },
+  });
+  class Viewport extends EventTarget {
+    #top = 0;
+    scrollHeight = 1000;
+    clientHeight = 200;
+    get scrollTop() {
+      return this.#top;
+    }
+    set scrollTop(value) {
+      this.#top = Math.max(0, Math.min(value, this.scrollHeight - this.clientHeight));
+    }
+    scroll(value) {
+      this.scrollTop = value;
+      this.dispatchEvent(new Event('scroll'));
+    }
+  }
+  const viewport = new Viewport();
+  const content = {};
+  const changes = [];
+  const controller = exports.followBottom(viewport, content, {
+    onFollowingChange: (following) => changes.push(following),
+    isActive: () => active,
+  });
+  return {
+    viewport,
+    content,
+    changes,
+    controller,
+    frames,
+    observers,
+    setActive(value) {
+      active = value;
+    },
+    flush() {
+      const callbacks = [...frames.values()];
+      frames.clear();
+      for (const callback of callbacks) callback();
+    },
+    settle() {
+      for (let i = 0; i < 100 && frames.size; i++) this.flush();
+      assert.equal(frames.size, 0);
+    },
+    resize(target = content) {
+      for (const observer of observers) {
+        if (observer.targets.has(target)) observer.callback();
+      }
+    },
+  };
+}
+
+test('initial display, delayed content growth and viewport resizing keep the bottom visible', () => {
+  const f = fixture();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 800);
+  f.viewport.scrollHeight = 1400;
+  f.resize();
+  f.resize();
+  assert.equal(f.frames.size, 1);
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1200);
+  f.viewport.clientHeight = 120;
+  f.resize(f.viewport);
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1280);
+});
+
+test('scrolling up cancels a queued follow and preserves the reading position as content grows', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scrollHeight = 1200;
+  f.resize();
+  f.viewport.scroll(300);
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 300);
+  f.viewport.scrollHeight = 1500;
+  f.resize();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 300);
+  assert.deepEqual(f.changes, [true, false]);
+});
+
+test('scrolling within four pixels of the bottom resumes following', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scroll(100);
+  f.viewport.scroll(796);
+  f.viewport.scrollHeight = 1300;
+  f.resize();
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1100);
+  assert.deepEqual(f.changes, [true, false, true]);
+});
+
+test('jump to latest resumes a paused viewport immediately', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scroll(100);
+  f.viewport.scrollHeight = 1500;
+  f.controller.resume();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 1300);
+  assert.deepEqual(f.changes, [true, false, true]);
+});
+
+test('cleanup cancels pending scrolling and removes resize and scroll subscriptions', () => {
+  const f = fixture();
+  f.controller.disconnect();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 0);
+  f.viewport.scroll(100);
+  f.resize();
+  assert.equal(f.frames.size, 0);
+  assert.ok(f.observers.every((observer) => observer.targets.size === 0));
+  assert.deepEqual(f.changes, [true]);
+});
+
+test('inactive content stays in place on opening and resizing, then follows active updates', () => {
+  const f = fixture({ active: false });
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 0);
+  f.viewport.scrollHeight = 1400;
+  f.resize();
+  f.viewport.clientHeight = 120;
+  f.resize(f.viewport);
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 0);
+  f.setActive(true);
+  f.viewport.scrollHeight = 1600;
+  f.resize();
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1480);
+});
+
+test('finishing an update prevents an already queued animation frame from scrolling', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scrollHeight = 1200;
+  f.resize();
+  f.setActive(false);
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 800);
+  f.viewport.scrollHeight = 1500;
+  f.resize();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 800);
+});
+
+test('pausing manually stays effective when updates stop and restart', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scroll(100);
+  f.setActive(false);
+  f.setActive(true);
+  f.viewport.scrollHeight = 1500;
+  f.resize();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 100);
+  assert.deepEqual(f.changes, [true, false]);
+});
+
+test('rapid content streaming and intermediate scroll events do not break follow mode', () => {
+  const f = fixture();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 800);
+
+  // Rapid growth during fast model output (e.g. Flash model)
+  f.viewport.scrollHeight = 1400;
+  f.resize();
+  // Browser fires a scroll event before rAF runs or while distanceToBottom is large
+  f.viewport.dispatchEvent(new Event('scroll'));
+  assert.deepEqual(f.changes, [true]); // Following must not be erroneously cancelled!
+
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1200);
+
+  // Another rapid burst
+  f.viewport.scrollHeight = 2000;
+  f.resize();
+  f.resize(); // Repeated resize calls within the same frame must coalesce without starvation
+  f.viewport.dispatchEvent(new Event('scroll'));
+  assert.deepEqual(f.changes, [true]);
+
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1800);
+});
+
+test('content growth scrolls smoothly and keeps chasing a moving bottom without restarting', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scrollHeight = 1400;
+  f.resize();
+  f.flush();
+  assert.ok(f.viewport.scrollTop > 800 && f.viewport.scrollTop < 1200);
+  assert.equal(f.frames.size, 1);
+  // Programmatic steps only move down, so they never pause following.
+  f.viewport.dispatchEvent(new Event('scroll'));
+  f.viewport.scrollHeight = 2000;
+  f.resize();
+  assert.equal(f.frames.size, 1);
+  f.settle();
+  assert.equal(f.viewport.scrollTop, 1800);
+  assert.deepEqual(f.changes, [true]);
+});
+
+test('jump to latest skips an in-flight smooth scroll', () => {
+  const f = fixture();
+  f.flush();
+  f.viewport.scrollHeight = 3000;
+  f.resize();
+  f.flush();
+  f.controller.resume();
+  f.flush();
+  assert.equal(f.viewport.scrollTop, 2800);
+  assert.equal(f.frames.size, 0);
+});

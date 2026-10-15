@@ -1,0 +1,16 @@
+{
+  "id": "xailon",
+  "name": "XailonCode",
+  "version": "0.2.21",
+  "description": "Local-first coding agent from Infinia Labs, bring your own model",
+  "distribution": {
+    "binary": {
+      "darwin-aarch64": {
+        "archive": "https://github.com/InfiniaTechLabs/xailon-releases/releases/download/v0.2.21/xailon-aarch64-apple-darwin.tar.bz2",
+        "cmd": "./xailon",
+        "args": ["acp"],
+        "sha256": "6251b87852bb78c1736a6455a3c825e772595284569688f3bb728a3c5e00caba"
+      }
+    }
+  }
+}

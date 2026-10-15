@@ -1,0 +1,73 @@
+import type { Emitter } from '@mantou/gem/lib/decorators';
+import type { CarouselItem } from '@mantou/tap-ui/elements/carousel';
+import { blockContainer, focusStyle } from '@mantou/tap-ui/lib/styles';
+import { i18n } from '../i18n';
+import { openWebBrowser } from '../navigation';
+
+@customElement('deck-relay-guide')
+@adoptedStyle(blockContainer)
+@adoptedStyle(focusStyle)
+export class DeckRelayGuideElement extends GemElement {
+  @emitter close: Emitter;
+
+  #goRepo = () => {
+    this.close();
+    openWebBrowser('https://github.com/infinialabs-ai/xailon-orbit', 'XailonOrbit');
+  };
+
+  get #items(): CarouselItem[] {
+    return [
+      {
+        title: i18n.get('relayGuide.step1Title'),
+        image: 'install',
+        description: i18n.get(
+          'relayGuide.step1Desc',
+          (text) => html`
+            <a
+              class="text-primary-strong underline decoration-primary/30 underline-offset-4"
+              @click=${this.#goRepo}
+            >${text}</a>
+          `,
+        ),
+      },
+      {
+        title: i18n.get('relayGuide.step2Title'),
+        image: 'copy',
+        description: i18n.get('relayGuide.step2Desc'),
+      },
+      {
+        title: i18n.get('relayGuide.step3Title'),
+        image: 'connected',
+        description: i18n.get('relayGuide.step3Desc'),
+      },
+    ].map(({ title, image, description }) => ({
+      label: title,
+      content: html`
+        <div class="text-center bg-bg">
+          <!-- In light mode, multiply blends the white image background into the Sheet background; in dark mode multiply would darken the image, so preserve the white rounded card -->
+          <img
+            class="mx-auto block h-[clamp(128px,24dvh,220px)] w-auto max-w-full rounded-xl object-contain mix-blend-multiply dark:mix-blend-normal"
+            src=${`/relay-guide/${image}.png`}
+            alt=""
+            width="1536"
+            height="1024"
+            draggable="false"
+          />
+          <h3 class="mt-5 mb-2 font-display text-xl font-semibold text-highlight">${title}</h3>
+          <p class="mx-auto my-0 max-w-80 text-sm leading-relaxed text-describe">${description}</p>
+        </div>
+      `,
+    }));
+  }
+
+  @template()
+  #render = () => html`
+    <tap-carousel class="mt-5" label=${i18n.get('relayGuide.carouselLabel')} .items=${this.#items}></tap-carousel>
+    <button
+      class="mt-5 h-12 w-full cursor-pointer rounded-xl border-0 bg-primary text-sm font-semibold text-white transition-transform active:scale-[0.985]"
+      @click=${() => this.close()}
+    >
+      ${i18n.get('relayGuide.gotIt')}
+    </button>
+  `;
+}

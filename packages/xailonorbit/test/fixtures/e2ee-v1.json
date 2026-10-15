@@ -1,0 +1,63 @@
+{
+  "id": "xop1_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "routeId": "xor1_ZDNBGXhymNpVXO6G_P4dLUTcaa32h1Y0JNu0ehk2B40",
+  "appMessage": {
+    "id": "req-1",
+    "method": "agent_prompt",
+    "params": {
+      "prompt": "你好，Relay 不可读",
+      "attachments": [
+        {
+          "type": "text",
+          "text": "private attachment"
+        }
+      ]
+    },
+    "peerId": 1
+  },
+  "hostMessage": {
+    "id": "req-1",
+    "event": {
+      "text": "加密回复"
+    },
+    "peerId": 1
+  },
+  "appFrame": {
+    "e2ee": 1,
+    "sender": "test-phone",
+    "nonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+    "ciphertext": "-721_UV901z1U58pAXqvgYJW0noUUeQPDqw5WGdriUtLd8A6cSTwZAw97uTubw_hheriCm2J2KTl1h0Cwh5pD4gKqdiZYp86__FnjfTrMgPRh2p4eGVhrzElRqxvTih3HcduEIV8d05C8q4pDblgpSVdIRD0gvizaI7Sei_B_cT91BRz8lbMfknI3s1CSPpx_PLLh02g7iKVYL1xzdKVactsHXbXZGgqW4U3eA"
+  },
+  "hostFrame": {
+    "e2ee": 1,
+    "sender": "host",
+    "nonce": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3",
+    "ciphertext": "D7CTnB-WeZ1q1JDKteuHji12pRoAsWu9tXvmEtWisLuQZg6jXFPFXOcUhRJ2ZaAxrS4HsGu_AT5WwBB2Hjen9y5EF7aKH-JJbQ"
+  },
+  "attachFrame": {
+    "e2ee": 1,
+    "sender": "test-phone",
+    "nonce": "CgsMDQ4PEBESExQVFhcYGRobHB0eHyAh",
+    "ciphertext": "23ftc7uok2J8a0oB6CwCwddNnjrWg6-2myPvQT1mK6y8qLh_UZuWaoBvRiJV7OOS1yadVUYVnUYMIDbPvHxSiaW9OKBC5lapDUa4Yd7Rt1-8iDmhS75iEwYtdg"
+  },
+  "listFrame": {
+    "e2ee": 1,
+    "sender": "test-phone",
+    "nonce": "CwwNDg8QERITFBUWFxgZGhscHR4fICEi",
+    "ciphertext": "caKTQgSVs7_O9HVbn2sTf_cdRkljUQgBeaQNdWPcP2wxAn8NW4o7U_D7JRDwIQsFgLCdY4XeLo08JRSZzR0lzg92KJegEu0D1hBiSw"
+  },
+  "wrongPeerFrame": {
+    "e2ee": 1,
+    "sender": "test-phone",
+    "nonce": "DA0ODxAREhMUFRYXGBkaGxwdHh8gISIj",
+    "ciphertext": "2VkqVuATKTHE5oJ_2yFxOj2SUyVPbYPbloVD5levi4rtzCTNkT4q19JnVruk8P5iE2HkZm5xwiLacm3JBDzZUf7rFHBxw424yPuXEjkTuiw"
+  },
+  "wrongDeviceFrame": {
+    "e2ee": 1,
+    "sender": "test-phone",
+    "nonce": "DQ4PEBESExQVFhcYGRobHB0eHyAhIiMk",
+    "ciphertext": "N35AJpMc29yg6I8mBaXxOf9iqwWEJpnVXBvaKaf39CngZ-pI91ud0Thn-wcpmX4z_ZaQdxVjRe9NhyLFOOm7w_QHyTpFkIfuvJgiahabEPn9Zp6yqHvsq-XmNmgWpkUyzOE"
+  },
+  "hostBinaryPlaintext": "AAAASHsiaWQiOiJyYXctMSIsInBlZXJJZCI6MSwicmVzdWx0Ijp7InBhdGgiOiIvdG1wL2EuYmluIiwidHlwZSI6ImJpbmFyeSJ9fQABAv8",
+  "hostBinaryFrame": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX5eB27mkMeG3UVq3Pg_BMWw-wXfgX8IobUDKaAALITEi2Nx6fjLGm0Ze_GqTklhJdRMsiLgYBFRwpqi7HSOlGx4GqbjrjJ8r6CMACWQFfvsIO1McrpDGviDrvA72hGjI8"
+}

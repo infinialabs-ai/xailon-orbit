@@ -1,0 +1,111 @@
+@import "tailwindcss/theme";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+/* Default hairline border; use with border-strong color where distinct boundaries are needed */
+@theme static {
+  --default-border-width: 0.5px;
+}
+
+@theme {
+  --color-primary: light-dark(#5a5fe8, #626bcc);
+  --color-primary-strong: light-dark(#4549cf, #aab3ff);
+  --color-primary-soft: light-dark(#ececff, #292e43);
+  --color-highlight: light-dark(#17192b, #f0f1f4);
+  --color-text: light-dark(#383b50, #d5d7dc);
+  --color-describe: light-dark(#767a91, #a0a4ad);
+  --color-bg: light-dark(#f4f6fa, #18191b);
+  --color-bg-light: light-dark(#ffffff, #222427);
+  --color-bg-hover: light-dark(#edefff, #2c2f33);
+  --color-border: light-dark(#e3e6ef, #383b40);
+  --color-border-strong: light-dark(#c9cddb, #4b4f57);
+  --color-disabled: light-dark(#a7aabc, #70757f);
+  --color-informative: light-dark(#5bc9c2, #7bb9c2);
+  --color-neutral: light-dark(#a7aabc, #70757f);
+  --color-positive: light-dark(#2f9b70, #7bb89e);
+  --color-notice: light-dark(#d98b36, #d9af70);
+  --color-negative: light-dark(#d4545e, #e18489);
+  --color-focus: light-dark(#5a5fe8, #aab3ff);
+  /* Font size adjusted up one step per iOS default Dynamic Type, spacing still based on 16px rem */
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-lg: 20px;
+  --text-xl: 22px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: ui-rounded, "SF Pro Rounded", "Avenir Next", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
+  --shadow-card: 0 7px 24px light-dark(rgb(45 48 82 / 0.07), rgb(0 0 0 / 0.16));
+  --shadow-float: 0 14px 44px light-dark(rgb(40 43 79 / 0.1), rgb(0 0 0 / 0.24));
+  --shadow-primary: 0 8px 20px light-dark(color-mix(in srgb, var(--color-primary) 22%, transparent), rgb(0 0 0 / 0.14));
+}
+
+html {
+  color-scheme: light dark;
+  /* tap-ui gives body a black background and shrinks it above the keyboard; without this the black canvas shows around the rounded keyboard */
+  background: var(--color-bg);
+}
+
+/* Consistent with page header: height, hairline + distinct boundary color */
+tap-navbar,
+tap-browser::part(navbar) {
+  grid-template-rows: 44px;
+  padding-block: max(6px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 6px;
+  border-block-end-width: var(--default-border-width);
+  border-block-end-color: var(--color-border-strong);
+}
+
+/* Long-press menu as an App card: tap-options defaults to a compact desktop dropdown */
+tap-callout::part(menu) {
+  width: 240px;
+  font-size: var(--text-base);
+  color: var(--color-highlight);
+  background: var(--color-bg-light);
+  border: var(--default-border-width) solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-float);
+  padding-block: 0;
+}
+
+/* iOS rows: hairlines between items; each overlaps the one above, so the first is clipped by the menu */
+tap-callout::part(menu-item) {
+  padding: 10px 16px;
+  margin-block-start: calc(-1 * var(--default-border-width));
+  border-block-start: var(--default-border-width) solid var(--color-border);
+}
+
+tap-callout::part(menu-item):active {
+  background: var(--color-bg-hover);
+}
+
+@layer base {
+  button,
+  textarea,
+  input {
+    font: inherit;
+  }
+
+  button,
+  summary {
+    outline: none;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

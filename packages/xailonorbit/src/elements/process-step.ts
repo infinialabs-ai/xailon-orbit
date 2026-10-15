@@ -1,0 +1,225 @@
+import type { Emitter } from '@mantou/gem/lib/decorators';
+import { TapPageElement } from '@mantou/tap-ui/elements/page';
+import { blockContainer } from '@mantou/tap-ui/lib/styles';
+import { i18n } from '../i18n';
+import { toolCallDiffs } from '../lib/diff';
+import { followBottom } from '../lib/follow-bottom';
+import { markdownStyle, unfoldedMarkdownExtensions } from '../lib/markdown';
+import { hasActiveStream } from '../lib/stream-text';
+import { openMessageLink } from '../navigation';
+import {
+  getToolCommand,
+  getToolStatus,
+  getToolTitle,
+  groupTimelineMessages,
+  type ProcessGroup,
+  parseToolOutputs,
+} from '../session/timeline';
+import { getSession } from '../state/sessions';
+import { getMessages, getRuntime, isTurnRunning, messagesStore, sessionsStore } from '../state/store';
+import { xailonOrbitTheme } from '../styles/theme';
+
+const style = css`
+  :scope {
+    color: ${xailonOrbitTheme.textColor};
+    font-family: ${xailonOrbitTheme.font};
+    line-height: 1.5;
+  }
+  tap-page, tap-navbar {
+    background: ${xailonOrbitTheme.backgroundColor};
+  }
+  tap-navbar {
+    border: 0;
+    margin-inline: 10px;
+  }
+  .page-content {
+    padding: 10px 20px calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+  deck-stream-markdown,
+  gem-bind-marked {
+    color: ${xailonOrbitTheme.textColor};
+    font-size: ${xailonOrbitTheme.fontSizeBase};
+    line-height: 1.625;
+  }
+  .step-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .step-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .section-label {
+    margin: 0;
+    color: ${xailonOrbitTheme.describeColor};
+    font-size: ${xailonOrbitTheme.fontSizeXs};
+    line-height: 1rem;
+  }
+  .diffs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-x: auto;
+  }
+  pre {
+    margin: 0;
+    color: ${xailonOrbitTheme.textColor};
+    font-family: ${xailonOrbitTheme.codeFont};
+    font-size: ${xailonOrbitTheme.fontSizeSm};
+    line-height: 1.625;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .code-block, .command-text {
+    border: ${xailonOrbitTheme.borderWidth} solid ${xailonOrbitTheme.borderColor};
+    border-radius: ${xailonOrbitTheme.normalRound};
+    background: ${xailonOrbitTheme.lightBackgroundColor};
+  }
+  .code-block {
+    overflow-x: auto;
+  }
+  .command-text {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    color: ${xailonOrbitTheme.textColor};
+    font-family: ${xailonOrbitTheme.codeFont};
+    font-size: ${xailonOrbitTheme.fontSizeSm};
+    line-height: 1.625;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+  }
+`;
+
+@customElement('deck-process-step')
+@adoptedStyle(blockContainer)
+@adoptedStyle(style)
+@connectStore(sessionsStore)
+@connectStore(messagesStore)
+export class DeckProcessStepElement extends GemElement {
+  @property sessionId = '';
+  @property groupId = '';
+  @property itemId = '';
+  @emitter navigate: Emitter;
+
+  #pageRef = createRef<HTMLElement>();
+  #contentRef = createRef<HTMLElement>();
+
+  @effect((i) => [i.sessionId, i.groupId, i.itemId, i.#updating, i.#pageRef.value, i.#contentRef.value])
+  #followContent = () =>
+    followBottom(
+      this.#pageRef.value?.shadowRoot?.querySelector<HTMLElement>(`[part=${TapPageElement.main}]`),
+      this.#contentRef.value,
+      { isActive: () => this.#updating },
+    )?.disconnect;
+
+  @memo((i) => [
+    i.sessionId,
+    i.groupId,
+    getMessages(i.sessionId),
+    isTurnRunning(i.sessionId),
+    getRuntime(i.sessionId).elicitations,
+  ])
+  get #group() {
+    return groupTimelineMessages(
+      getMessages(this.sessionId),
+      isTurnRunning(this.sessionId),
+      getRuntime(this.sessionId).elicitations,
+    ).find(
+      (item): item is { type: 'group'; group: ProcessGroup } => item.type === 'group' && item.group.id === this.groupId,
+    )?.group;
+  }
+
+  get #item() {
+    return this.#group?.items.find((item) => item.id === this.itemId);
+  }
+
+  get #updating() {
+    const item = this.#item;
+    const streamActive = hasActiveStream(`${this.sessionId}:${this.groupId}:${this.itemId}`);
+    if (!this.#group?.pending || !item) return streamActive;
+    if (item.type === 'thought') return item.pending || streamActive;
+    const status = getToolStatus(item.data, true);
+    return status === 'pending' || status === 'in_progress' || streamActive;
+  }
+
+  #openLink = (event: MouseEvent) => {
+    if (openMessageLink(event, getSession(this.sessionId)?.cwd || '')) this.navigate();
+  };
+
+  #renderContent = () => {
+    const item = this.#item;
+    if (!item) return html``;
+    if (item.type === 'thought') {
+      return html`
+        <deck-stream-markdown
+          .text=${item.text}
+          .streamKey=${`${this.sessionId}:${this.groupId}:${item.id}`}
+          ?streaming=${Boolean(this.#group?.pending && item.pending)}
+          .mdStyle=${markdownStyle}
+          .extensions=${unfoldedMarkdownExtensions(getSession(this.sessionId)?.cwd)}
+          @click=${this.#openLink}
+        ></deck-stream-markdown>
+      `;
+    }
+
+    const diffs = toolCallDiffs(item.data.content);
+    const outputs = parseToolOutputs(item.data);
+    const hasInput = item.data.rawInput !== undefined;
+    const hasOutput = Boolean(diffs.length || outputs.texts.length || outputs.raw !== undefined);
+
+    if (!hasInput && !hasOutput) {
+      return html`<pre>${getToolCommand(item.data)}</pre>`;
+    }
+
+    return html`
+      <div class="step-sections">
+        <div v-if=${hasInput || hasOutput} class="step-section">
+          <p class="section-label">${i18n.get('timeline.inputParams')}</p>
+          <tap-code-block
+            v-if=${hasInput}
+            codelang=${typeof item.data.rawInput === 'string' ? '' : 'json'}
+            class="code-block"
+          >${typeof item.data.rawInput === 'string' ? item.data.rawInput : JSON.stringify(item.data.rawInput, null, 2)}</tap-code-block>
+          <pre v-if=${!hasInput && hasOutput} class="command-text">${getToolCommand(item.data)}</pre>
+        </div>
+        <div v-if=${hasOutput} class="step-section">
+          <p class="section-label">${i18n.get('timeline.output')}</p>
+          <div v-if=${diffs.length} class="diffs">
+            ${diffs.map(
+              ({ text }) => html`<tap-code-block codelang="diff" class="code-block">${text}</tap-code-block>`,
+            )}
+          </div>
+          <deck-stream-markdown
+            v-if=${outputs.texts.length}
+            .text=${outputs.texts.join('\n\n')}
+            .streamKey=${`${this.sessionId}:${this.groupId}:${item.id}:output`}
+            ?streaming=${this.#updating}
+            .mdStyle=${markdownStyle}
+            .extensions=${unfoldedMarkdownExtensions(getSession(this.sessionId)?.cwd)}
+            @click=${this.#openLink}
+          ></deck-stream-markdown>
+          <tap-code-block
+            v-if=${outputs.raw !== undefined}
+            codelang="json"
+            class="code-block"
+          >${JSON.stringify(outputs.raw, null, 2)}</tap-code-block>
+        </div>
+      </div>
+    `;
+  };
+
+  @template()
+  #render = () => {
+    const item = this.#item;
+    const title = item?.type === 'tool' ? getToolTitle(item.data) : i18n.get('timeline.thought');
+    return html`
+      <tap-page ${this.#pageRef}>
+        <tap-navbar slot="header" title=${title} back default-back></tap-navbar>
+        <div ${this.#contentRef} class="page-content select-text">${this.#renderContent()}</div>
+      </tap-page>
+    `;
+  };
+}

@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import { beforeEach, describe, it } from 'node:test';
+
+const { agentSessionKey, readAgentPanelState, updateAgentPanelState, upsertStoredSession } = await import(
+  '../shared/agent-session-store.js'
+);
+
+describe('agent session storage', () => {
+  beforeEach(() => {
+    const storage = {};
+    globalThis.chrome = {
+      storage: {
+        local: {
+          get: async (key) => ({ [key]: storage[key] }),
+          set: async (patch) => Object.assign(storage, patch),
+        },
+      },
+    };
+  });
+
+  it('keeps agent session keys distinct', () => {
+    const sessions = [
+      { agent: 'claude-acp', sessionId: 'same' },
+      { agent: 'codex-acp', sessionId: 'same' },
+      { agent: 'a:b', sessionId: 'c' },
+      { agent: 'a', sessionId: 'b:c' },
+    ];
+    const keys = sessions.map(({ agent, sessionId }) => agentSessionKey(agent, sessionId));
+
+    assert.equal(new Set(keys).size, sessions.length);
+  });
+
+  it('never persists an in-memory draft session', async () => {
+    await updateAgentPanelState((state) => upsertStoredSession(state, { agent: 'claude-acp', title: '', draft: true }));
+
+    assert.deepEqual((await readAgentPanelState()).sessions, []);
+  });
+
+  it('persists sessions and per-agent defaults together', async () => {
+    await updateAgentPanelState((state) =>
+      upsertStoredSession(state, { agent: 'claude-acp', sessionId: 'one', title: 'First' }),
+    );
+    await updateAgentPanelState((state) => ({
+      ...state,
+      defaults: {
+        agent: 'claude-acp',
+        configOptionsByAgent: {
+          claude: [{ id: 'mode', type: 'select', currentValue: 'plan', options: [] }],
+          codex: [{ id: 'mode', type: 'select', currentValue: 'default', options: [] }],
+        },
+      },
+    }));
+
+    const state = await readAgentPanelState();
+    assert.equal(state.sessions[0].title, 'First');
+    assert.equal(state.defaults.configOptionsByAgent.claude[0].currentValue, 'plan');
+    assert.equal(state.defaults.configOptionsByAgent.codex[0].currentValue, 'default');
+  });
+
+  it('persists and normalizes relayId', async () => {
+    assert.equal((await readAgentPanelState()).relayId, '');
+
+    await updateAgentPanelState((state) => ({ ...state, relayId: 'xop1_test123' }));
+    assert.equal((await readAgentPanelState()).relayId, 'xop1_test123');
+  });
+});

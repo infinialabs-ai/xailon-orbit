@@ -1,0 +1,336 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+
+const require = createRequire(import.meta.url);
+
+import * as chacha from '@noble/ciphers/chacha.js';
+import * as hkdf from '@noble/hashes/hkdf.js';
+import * as sha2 from '@noble/hashes/sha2.js';
+import ts from 'typescript';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+export const relayId = '01234567-89ab-cdef-0123-456789abcdef';
+export const settingsKey = 'xailonorbit.settings.v1';
+export const deviceKey = 'xailonorbit.device_id.v1';
+export const resetKey = 'xailonorbit.reset_pending.v1';
+export const relayKey = 'relay-client.v1';
+const compiledModules = new Map();
+export const tick = async () => {
+  for (let i = 0; i < 40; i++) await Promise.resolve();
+};
+
+const memoryStorage = () => {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key),
+  };
+};
+
+// Each fixture is a new document/module realm. Only browser storage and the
+// simulated host survive reload; use the installed Relay SDK and App source.
+export function documentFixture(previous, options = {}) {
+  const localStorage = previous?.localStorage ?? memoryStorage();
+  const sessionStorage = previous?.sessionStorage ?? memoryStorage();
+  const host = previous?.host ?? { sequence: 0 };
+  if (!previous) {
+    localStorage.setItem(settingsKey, JSON.stringify({ relayId: options.pairingId ?? relayId, agent: 'codex' }));
+    localStorage.setItem('unrelated.preference', 'keep');
+  }
+  const sockets = [];
+  const requests = [];
+  const heldMethods = new Set();
+  const timers = new Map();
+  const haptics = [];
+  let timerId = 0;
+  let now = 0;
+  let reloads = 0;
+  let hostEncryption;
+  let outgoingEncryption;
+
+  class Socket extends EventTarget {
+    static OPEN = 1;
+    readyState = 0;
+    sent = [];
+    constructor(url) {
+      super();
+      this.url = String(url);
+      sockets.push(this);
+    }
+    send(data) {
+      const frame = JSON.parse(data);
+      this.sent.push(frame);
+      if (frame.type === 'message') {
+        requests.push(
+          outgoingEncryption ? { ...frame, payload: outgoingEncryption.readOutgoing(frame.payload) } : frame,
+        );
+      }
+    }
+    close() {
+      this.readyState = 3;
+      this.dispatchEvent(new Event('close'));
+    }
+    frame(frame) {
+      this.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(frame) }));
+    }
+    binary(bytes) {
+      this.dispatchEvent(new MessageEvent('message', { data: bytes.slice().buffer }));
+    }
+    open() {
+      this.readyState = 1;
+      this.dispatchEvent(new Event('open'));
+      this.frame({ type: 'ready', endpoint: '2' });
+    }
+  }
+
+  const window = new EventTarget();
+  window.location = { reload: () => reloads++ };
+  const document = new EventTarget();
+  document.visibilityState = 'visible';
+  const context = vm.createContext({
+    console,
+    crypto,
+    Map,
+    Set,
+    URL,
+    TextEncoder,
+    TextDecoder,
+    Uint8Array,
+    btoa,
+    atob,
+    queueMicrotask,
+    localStorage,
+    sessionStorage,
+    WebSocket: Socket,
+    window,
+    document,
+    process: { env: { NODE_ENV: 'development' } },
+    setTimeout: (fn, delay) => {
+      timers.set(++timerId, { fn, delay, at: now + delay });
+      return timerId;
+    },
+    clearTimeout: (id) => timers.delete(id),
+    createStore: (initial) => {
+      const state = (patch) => Object.assign(state, patch);
+      return Object.assign(state, initial);
+    },
+  });
+  class MockI18n {
+    constructor(options) {
+      this.fallbackLanguage = options.fallbackLanguage || 'en';
+      this.resources = options.resources || {};
+      this.currentLanguage = options.currentLanguage || 'en';
+      this.onChange = options.onChange;
+    }
+    setLanguage(lang) {
+      this.currentLanguage = lang;
+      this.onChange?.(lang);
+    }
+    get(key, ...rest) {
+      const pack = this.resources[this.currentLanguage] || this.resources[this.fallbackLanguage] || {};
+      const raw = pack[key] ?? key;
+      if (!rest.length) return raw;
+      return raw.replace(/\$(\d+)/g, (_, i) => rest[Number(i) - 1] ?? '');
+    }
+  }
+
+  const cache = new Map();
+  function load(file) {
+    if (file.endsWith('.json')) {
+      const data = JSON.parse(readFileSync(file, 'utf8'));
+      data.default = data;
+      return data;
+    }
+    if (cache.has(file)) return cache.get(file).exports;
+    const module = { exports: {} };
+    cache.set(file, module);
+    if (!compiledModules.has(file)) {
+      compiledModules.set(
+        file,
+        ts.transpileModule(readFileSync(file, 'utf8'), {
+          compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.CommonJS },
+        }).outputText,
+      );
+    }
+    const run = vm.runInContext(`(function(require,module,exports){${compiledModules.get(file)}\n})`, context, {
+      filename: file,
+    });
+    run(
+      (name) => {
+        if (name === '@noble/ciphers/chacha.js') return chacha;
+        if (name === '@noble/hashes/hkdf.js') return hkdf;
+        if (name === '@noble/hashes/sha2.js') return sha2;
+        if (name === '@tauri-apps/plugin-haptics') {
+          return {
+            notificationFeedback: async (type) => {
+              haptics.push({ type: 'notification', value: type });
+              return { status: 'ok', data: null };
+            },
+            selectionFeedback: async () => {
+              haptics.push({ type: 'selection' });
+              return { status: 'ok', data: null };
+            },
+            impactFeedback: async (style) => {
+              haptics.push({ type: 'impact', value: style });
+              return { status: 'ok', data: null };
+            },
+            vibrate: async (duration) => {
+              haptics.push({ type: 'vibrate', value: duration });
+              return { status: 'ok', data: null };
+            },
+          };
+        }
+        if (name === '@tauri-apps/api/core') return { isTauri: () => false };
+        if (name === '@mantou/tap-ui/lib/encode') {
+          return load(path.join(root, 'node_modules/@mantou/tap-ui/lib/encode.js'));
+        }
+        // Encoding uses the real Tap UI module; its number helpers are unrelated.
+        if (file.endsWith('/@mantou/tap-ui/lib/encode.js') && name === './number') return {};
+        if (name === 'relay-client-ts') {
+          return load(path.join(root, 'node_modules/relay-client-ts/src/relay-client.ts'));
+        }
+        if (name === '@mantou/gem/helper/i18n') {
+          return { I18n: MockI18n };
+        }
+        if (name === '@mantou/tap-ui/lib/utils') {
+          return { getStringFromTemplate: (t) => (typeof t === 'string' ? t : t?.strings ? t.strings.join('') : '') };
+        }
+        if (name === '@mantou/tap-ui/lib/locale') {
+          return { loadLocale: () => Promise.resolve() };
+        }
+        if (name === '@mantou/tap-ui/elements/toast') {
+          return { Toast: { open: () => {} } };
+        }
+        if (name === '@mantou/tap-ui/elements/swipeout') {
+          return { TapSwipeoutElement: { activeSwipeout: undefined } };
+        }
+        if (name === '@mantou/tap-ui/lib/cache') {
+          const { Cache } = require('@mantou/tap-ui/lib/cache');
+          return { Cache };
+        }
+        if (name === '@mantou/tap-ui/lib/timer') {
+          return { throttle: (fn) => fn };
+        }
+        if (name.endsWith('.json')) {
+          return load(path.resolve(path.dirname(file), name));
+        }
+        return load(path.resolve(path.dirname(file), `${name}.ts`));
+      },
+      module,
+      module.exports,
+    );
+    return module.exports;
+  }
+  const app = Object.assign(
+    {},
+    ...[
+      'state/store',
+      'state/sessions',
+      'state/config-options',
+      'session/config-options',
+      'state/app',
+      'session/events',
+      'session/timeline',
+      'attachment/message',
+      'session/voice-chat',
+      'session/elicitation',
+      'state/user-input',
+      'agent/transport',
+    ].map((name) => load(path.join(root, `src/${name}.ts`))),
+  );
+  const remoteSession = { sessionId: 's1', cwd: '/tmp', agent: 'codex', title: 'Reset test' };
+  const encryption = load(path.join(root, 'src/agent/encryption.ts'));
+  const pairingId = app.xailonOrbitStore.settings.relayId;
+  if (pairingId.startsWith('xop1_')) {
+    hostEncryption = new encryption.RelayEncryption(pairingId, 'host', 'host');
+    outgoingEncryption = new encryption.RelayEncryption(pairingId, 'app', 'unused');
+  }
+  const processed = new Set();
+  const deliver = (payload) => {
+    const sequence = ++host.sequence;
+    sockets.at(-1).frame({
+      type: 'message',
+      message_id: `host-${sequence}`,
+      sequence,
+      payload: hostEncryption ? hostEncryption.seal(payload) : payload,
+    });
+  };
+  const reply = (request, result) => deliver({ id: request.payload.id, result, peerId: 1 });
+  async function settleHost() {
+    for (let pass = 0; pass < 12; pass++) {
+      await tick();
+      for (const request of [...requests]) {
+        const { method } = request.payload;
+        if (!method || processed.has(request.message_id) || heldMethods.has(method)) continue;
+        const results = {
+          peer_attach: { peerId: 1 },
+          agent_list: { agents: [{ id: 'codex', name: 'Codex' }] },
+          agent_session_list: { sessions: [remoteSession] },
+          agent_session_close: { closed: true },
+          agent_session_load: { sessionId: 's1', agent: 'codex' },
+          agent_session_create: { sessionId: 'created', agent: 'codex' },
+        };
+        if (!(method in results)) continue;
+        processed.add(request.message_id);
+        sockets.at(-1).frame({ type: 'stored', message_id: request.message_id });
+        reply(request, results[method]);
+      }
+    }
+    await tick();
+  }
+  async function connect() {
+    app.startApp();
+    sockets.at(-1).open();
+    await settleHost();
+  }
+  async function openSession() {
+    const loading = app.ensureSessionLoaded('s1');
+    await settleHost();
+    await loading;
+    assert.equal(app.isSessionOpened('s1'), true);
+  }
+
+  return {
+    app,
+    encryption,
+    transport: load(path.join(root, 'src/agent/transport.ts')),
+    rpc: load(path.join(root, 'src/agent/rpc.ts')),
+    window,
+    document,
+    timers,
+    async advance(ms) {
+      const end = now + ms;
+      for (;;) {
+        const next = [...timers].filter(([, timer]) => timer.at <= end).sort((a, b) => a[1].at - b[1].at)[0];
+        if (!next) break;
+        const [id, timer] = next;
+        now = timer.at;
+        timers.delete(id);
+        timer.fn();
+        await tick();
+      }
+      now = end;
+      await tick();
+    },
+    localStorage,
+    sessionStorage,
+    host,
+    sockets,
+    requests,
+    heldMethods,
+    haptics,
+    deliver,
+    reply,
+    connect,
+    openSession,
+    settleHost,
+    get reloads() {
+      return reloads;
+    },
+  };
+}

@@ -1,0 +1,25 @@
+# XailonOrbit Extension (`packages/extension`)
+
+基于 Extension.js 与 Manifest V3 构建的浏览器扩展（支持 Chrome Side Panel 与 Firefox Sidebar）。
+
+## 架构与核心文件
+
+- `pages/agent-panel.html` & `pages/agent-panel.js`：核心交互面板，Side Panel 与 DevTools 共同复用。
+- `shared/agent-storage.js`：基于 `chrome.storage.local` 适配 `relay-client-ts` 的持久化存储（RelayStore）。
+- `shared/agent-session-store.js`：本地会话状态与配置持久化。
+- **通信架构**：直接复用 `xailonorbit/agent/transport`（`agentApi` / `startTransport`），经 `relay-client-ts` 接入 Relay 服务与 Daemon 通信。
+- **附件**：读取、线上格式、消息与历史中的附件解析复用 `xailonorbit/attachment/*`，粘贴引用复用 `xailonorbit/composer/references`（规则见 App 文档；测试经 `registerHooks` 直接加载其 TS 源码）；扩展没有 file-viewer，主机文件只显示为附件条。
+- **等待用户输入**：`agent_permission_request` 显示权限卡片，选择或取消都经 `agent_user_input_respond` 作答；面板卸载时取消所有未作答的权限。面板没有问题卡片，收到 `agent_elicitation_request` 即以 decline 作答（Claude 视为用户跳过，继续执行）。
+- **浏览器上下文**：建会话时 `panelContext` 携带当前 tab 的 `tabId` 与 `url`；Daemon 经本机 browser4agent 核实是同一浏览器后才注入浏览器提示词；扩展渲染能力提示词始终注入。
+
+## 平台与构建约束
+
+- **CSP 限制**：严禁远程脚本；Prism 代码高亮与 Diff 样式均使用 `public/vendor/` 本地镜像。
+- **图标**：只提供 32（工具栏用，图形裁紧）与 128（四周 16px 透明边距），其他尺寸由浏览器缩放。
+- **多端构建**：`pnpm run build` 同时打包 Chromium 与 Firefox 产物至 `dist/`。
+
+## 常用命令
+
+- `pnpm run dev`：启动 Chrome 扩展调试环境。
+- `pnpm run build`：构建 Chromium 与 Firefox 扩展（`dist/chrome`、`dist/firefox`）。
+- `pnpm run test`：运行单元测试。

@@ -1,0 +1,151 @@
+import { getStringFromTemplate } from '@mantou/tap-ui/lib/utils';
+import { i18n } from '../i18n';
+import type { Elicitation } from './elicitation';
+import type { ChatMessage, TextMessage, ThoughtMessage, ToolCallData, ToolMessage } from './types';
+
+export type ProcessGroup = { id: string; items: (ThoughtMessage | ToolMessage)[]; pending: boolean };
+
+type TimelineItem =
+  | { type: 'message'; message: TextMessage }
+  | { type: 'group'; group: ProcessGroup }
+  | { type: 'elicitation'; elicitation: Elicitation };
+
+export type ToolStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'ended';
+
+export const getToolStatus = (tool: ToolCallData, live: boolean) => {
+  const status = tool.status || 'pending';
+  return !live && (status === 'pending' || status === 'in_progress') ? 'ended' : status;
+};
+
+export const getProcessSummary = (group: ProcessGroup): string => {
+  const tools = group.items.filter((item) => item.type === 'tool');
+  if (!group.pending) {
+    return tools.length
+      ? getStringFromTemplate(i18n.get('timeline.toolCalls', String(tools.length)))
+      : i18n.get('timeline.thought');
+  }
+  const active = tools.findLast(
+    (tool) => !tool.data.status || tool.data.status === 'pending' || tool.data.status === 'in_progress',
+  );
+  return active ? getToolCommand(active.data) : i18n.get('timeline.thinking');
+};
+
+export const getToolCommand = ({ rawInput, title }: ToolCallData) => {
+  if (typeof rawInput === 'string' && rawInput.trim()) return rawInput;
+  if (rawInput && typeof rawInput === 'object') {
+    const input = rawInput as { command?: unknown; cmd?: unknown };
+    const command = input.command ?? input.cmd;
+    if (typeof command === 'string' && command.trim()) return command;
+  }
+  return title || i18n.get('timeline.toolCall');
+};
+
+export const getToolTitle = ({ rawInput, title }: ToolCallData) => {
+  if (rawInput && typeof rawInput === 'object' && 'description' in rawInput) {
+    const { description } = rawInput;
+    if (typeof description === 'string' && description.trim()) return description;
+  }
+  return title || i18n.get('timeline.toolCall');
+};
+
+export type ToolParsedOutputs = {
+  texts: string[];
+  raw?: unknown;
+};
+
+export const parseToolOutputs = (data: ToolCallData): ToolParsedOutputs => {
+  const texts: string[] = [];
+
+  if (Array.isArray(data.content)) {
+    for (const item of data.content) {
+      if (!item || typeof item !== 'object') continue;
+      const record = item as Record<string, unknown>;
+      if (record.type === 'text' && typeof record.text === 'string' && record.text.trim()) {
+        texts.push(record.text);
+      } else if (record.type === 'content' && record.content && typeof record.content === 'object') {
+        const nested = record.content as Record<string, unknown>;
+        if (nested.type === 'text' && typeof nested.text === 'string' && nested.text.trim()) {
+          texts.push(nested.text);
+        }
+      }
+    }
+  }
+
+  let raw: unknown;
+  if (data.rawOutput !== undefined && data.rawOutput !== null) {
+    if (typeof data.rawOutput === 'string') {
+      const trimmed = data.rawOutput.trim();
+      const alreadyIncluded = texts.some((t) => t.includes(trimmed) || trimmed.includes(t.trim()));
+      if (trimmed && !alreadyIncluded && texts.length === 0) {
+        texts.push(data.rawOutput);
+      }
+    } else if (texts.length === 0) {
+      raw = data.rawOutput;
+    }
+  }
+
+  return { texts, raw };
+};
+
+/** Questions follow the tool call that asked them, splitting its process group; others go last. */
+export const groupTimelineMessages = (
+  messages: ChatMessage[],
+  sessionPending: boolean,
+  elicitations: Elicitation[] = [],
+): TimelineItem[] => {
+  const result: TimelineItem[] = [];
+  const unplaced = new Set(elicitations);
+  let currentGroup: ProcessGroup | null = null;
+  const lastUserIndex = messages.findLastIndex((message) => 'role' in message && message.role === 'user');
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    const isLast = i === messages.length - 1;
+
+    if ('type' in msg && (msg.type === 'thought' || msg.type === 'tool')) {
+      const isMsgPending =
+        sessionPending &&
+        i > lastUserIndex &&
+        ((msg.type === 'thought' && (msg.pending || isLast)) ||
+          (msg.type === 'tool' &&
+            (!msg.data.status || msg.data.status === 'pending' || msg.data.status === 'in_progress')));
+
+      if (!currentGroup) {
+        currentGroup = {
+          id: `group-${msg.id}`,
+          items: [msg],
+          pending: Boolean(isMsgPending),
+        };
+        result.push({ type: 'group', group: currentGroup });
+      } else {
+        currentGroup.items.push(msg);
+        if (isMsgPending) {
+          currentGroup.pending = true;
+        }
+      }
+      if (msg.type === 'tool') {
+        for (const elicitation of unplaced) {
+          if (elicitation.request.toolCallId !== msg.data.toolCallId) continue;
+          unplaced.delete(elicitation);
+          result.push({ type: 'elicitation', elicitation });
+          currentGroup = null;
+        }
+      }
+    } else {
+      const textMsg = msg as TextMessage;
+      if (textMsg.role === 'agent' && !textMsg.text?.trim() && !textMsg.attachments?.length) {
+        continue;
+      }
+      currentGroup = null;
+      result.push({ type: 'message', message: textMsg });
+    }
+  }
+
+  // While a task is still running, the trailing group remains waiting for follow-up events even if all tools have completed
+  const last = result.at(-1);
+  if (sessionPending && last?.type === 'group') last.group.pending = true;
+
+  for (const elicitation of unplaced) result.push({ type: 'elicitation', elicitation });
+
+  return result;
+};

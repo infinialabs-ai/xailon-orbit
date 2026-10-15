@@ -1,0 +1,52 @@
+import type { LoadedSession, RemoteSession } from '../agent/api';
+import type { Attachment } from '../attachment/types';
+
+export type DeckSession = RemoteSession & {
+  agent: string;
+  /** Local session awaiting its first remote create request. */
+  pendingCreation?: boolean;
+};
+
+export type ToolCallStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+export type ToolCallContent = Record<string, unknown> & { type?: string };
+
+export type ToolCallData = {
+  toolCallId: string;
+  title: string;
+  kind?: string;
+  status?: ToolCallStatus;
+  rawInput?: unknown;
+  rawOutput?: unknown;
+  content?: ToolCallContent[];
+};
+
+export type TextMessage = {
+  id: string;
+  role: 'user' | 'agent';
+  text: string;
+  /** ACP id of the latest agent message merged into this one; a fork point for the next user message. */
+  messageId?: string;
+  attachments?: Attachment[];
+  /** Sent from voice chat: the agent is asked for a spoken summary. */
+  voiceChat?: boolean;
+  streaming?: boolean;
+  failed?: boolean;
+};
+
+export type ThoughtMessage = {
+  id: string;
+  type: 'thought';
+  text: string;
+  pending: boolean;
+};
+
+export type ToolMessage = {
+  id: string;
+  type: 'tool';
+  data: ToolCallData;
+};
+
+export type ChatMessage = TextMessage | ThoughtMessage | ToolMessage;
+
+export type SessionOptions = Pick<LoadedSession, 'modes' | 'configOptions'>;
