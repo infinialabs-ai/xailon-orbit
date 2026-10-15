@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "992996572378",
+    "project_id": "xailon-orbit",
+    "storage_bucket": "xailon-orbit.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:992996572378:android:cc216c53d417ba774af9e3",
+        "android_client_info": {
+          "package_name": "ai.infinialabs.xailonorbit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBQV1MZ4Eu3TW0aoTIyjOxM5cj9kwh6ok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

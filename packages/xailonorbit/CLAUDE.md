@@ -36,7 +36,7 @@ XailonOrbit 客户端前端工程，结合 Tauri 2 提供移动端（Android / i
 - **页面进场**：Stack 动画由 JS 逐帧驱动，重渲染会让它中途卡顿。更改列表、提交历史、diff、文件查看、文件浏览、实时画面与会话时间线等请求返回后才渲染的内容，在 `tap-page` 首次 `full-show`（完全进入视口且可见，即进场动画结束；这些页面关闭 `trackVisibility` 以免延迟）后才渲染，请求照常立即发出；会话只在需要远端加载时等待、实时画面只在没有缓存帧时等待，其余直接渲染。
 - **手势**：对齐 iOS，一次触摸只锁定一个方向，cell 横滑与列表下拉刷新互斥，下拉时自动收起已打开的 swipeout；下拉用 `translate` 平移内容。
 - **弹层**：Sheet 与页面一致用灰底（主题 `backgroundColor`），其中的卡片、代码块用 `lightBackgroundColor`。`elements/sheet.ts` 通过 tap-reflect 映射到 body 并保留样式作用域；`foldable.ts` 的 Sheet 在全局 Stack 变化时关闭。`Sheet.open` 的 body 由 `patches/@mantou__tap-ui@*.patch` 改为渲染到 sheet 的 light DOM 再经 slot 投影：WebKit 27 不把 shadow root 中的 `@scope` 规则应用到被 slot 进内层 shadow host 的元素（[Bug 327165](https://bugs.webkit.org/show_bug.cgi?id=327165)），Gem light DOM 元素的样式会全部失效；上游发版后删除 patch。
-- **Android**：Firebase 配置（`crates/xailonorbit/gen/android/app/google-services.json`、`crates/xailonorbit/gen/apple/xailonorbit_iOS/GoogleService-Info.plist`）来自 Infinia Labs 的 Firebase 项目，不入库，构建前自行放入；禁止放入服务账号私钥。identifier / namespace / applicationId / MainActivity package 统一为 `ai.infinialabs.xailonorbit`（`tauri.conf.json`、`build.gradle.kts`、`MainActivity.kt`）。FCM token 经 `peer_attach` 同步，更新 token 不切换连接状态。
+- **Android**：Firebase 客户端配置（`crates/xailonorbit/gen/android/app/google-services.json`、`crates/xailonorbit/gen/apple/xailonorbit_iOS/GoogleService-Info.plist`）来自 Firebase 项目 `xailon-orbit`，可公开入库；服务账号私钥只作为 Relay Worker 的 `FCM_SERVICE_ACCOUNT` secret，禁止入库。iOS 推送需在 Firebase 控制台上传 APNs 密钥。identifier / namespace / applicationId / MainActivity package 统一为 `ai.infinialabs.xailonorbit`（`tauri.conf.json`、`build.gradle.kts`、`MainActivity.kt`）。FCM token 经 `peer_attach` 同步，更新 token 不切换连接状态。
 - **iOS**：原生资源在 `crates/xailonorbit/`；更新应用图标时同步更新 `LaunchIcon`。
 
 ## 命名

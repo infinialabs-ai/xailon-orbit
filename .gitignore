@@ -29,6 +29,3 @@ target/
 test-results/
 playwright-report/
 
-# Firebase configs come from the Infinia Labs Firebase project; not committed.
-google-services.json
-GoogleService-Info.plist
