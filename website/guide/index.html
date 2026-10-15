@@ -125,8 +125,8 @@
           <ul>
             <li>
               <strong>Computer:</strong>
-              macOS, Linux (x64) or Windows (x64). Node.js 22+ for the npm install, or use Homebrew, Scoop or a source
-              build.
+              macOS (Apple Silicon or Intel), Linux (x64) or Windows (x64). The daemon is a single native binary with no
+              other dependencies.
             </li>
             <li>
               <strong>Phone:</strong>
@@ -146,13 +146,31 @@
         <section id="daemon">
           <h2>3. Install the daemon</h2>
           <p>Install <code>xailon-orbitd</code> on the computer where your code and agents live.</p>
-          <h3>npm (macOS, Linux x64, Windows x64)</h3>
-          <pre><code>npm install -g xailon-orbitd</code></pre>
+          <h3>One-line installer (recommended)</h3>
+          <p>
+            Downloads the latest release from GitHub, verifies its SHA-256 checksum and installs to
+            <code>~/.local/bin</code> (macOS, Linux x64) or <code>%LOCALAPPDATA%\Programs\xailon-orbitd</code> (Windows
+            x64).
+          </p>
+          <pre
+          ><code>curl -fsSL https://xailon-orbit.infinialabs.ai/install.sh | sh   <span class="c"># macOS, Linux</span></code></pre>
+          <pre
+          ><code>irm https://xailon-orbit.infinialabs.ai/install.ps1 | iex       <span class="c"># Windows PowerShell</span></code></pre>
+          <p>
+            Set <code>XAILON_ORBIT_VERSION=v0.4.0</code> to pin a version, or <code>XAILON_ORBIT_INSTALL_DIR</code> to
+            change the location. Prefer to download by hand? Every build is on the
+            <a href="https://github.com/infinialabs-ai/xailon-orbit/releases/latest">releases page</a>.
+          </p>
           <h3>Homebrew (macOS, Linux)</h3>
           <pre><code>brew install infinialabs-ai/tap/xailon-orbitd</code></pre>
           <h3>Scoop (Windows)</h3>
           <pre><code>scoop bucket add infinialabs https://github.com/infinialabs-ai/scoop-bucket
 scoop install xailon-orbitd</code></pre>
+          <h3>npm <span class="badge">Coming soon</span></h3>
+          <p>
+            The <code>xailon-orbitd</code> npm package (<code>npm install -g xailon-orbitd</code>, Node.js 22+) is not
+            published yet. Use one of the options above.
+          </p>
           <h3>From source</h3>
           <pre><code>git clone https://github.com/infinialabs-ai/xailon-orbit.git
 cd xailon-orbit
@@ -604,16 +622,16 @@ xailon-orbitd reset --pairing-id &lt;NEW_PAIRING_ID&gt;</code></pre>
           <h2>13. Update and uninstall</h2>
           <h3>Update</h3>
           <pre><code>xailon-orbitd stop
-npm install -g xailon-orbitd@latest   <span class="c"># or: brew upgrade xailon-orbitd / scoop update xailon-orbitd</span>
+curl -fsSL https://xailon-orbit.infinialabs.ai/install.sh | sh   <span class="c"># or: brew upgrade xailon-orbitd / scoop update xailon-orbitd</span>
 xailon-orbitd start</code></pre>
           <p>
-            If you move your Node installation or npm's global directory, run <code>xailon-orbitd restart</code> from
-            the new installation so autostart uses the new path.
+            If you move the binary to a different location, run <code>xailon-orbitd restart</code> from the new location
+            so autostart uses the new path.
           </p>
           <h3>Uninstall</h3>
           <pre
           ><code>xailon-orbitd stop                    <span class="c"># stops the daemon and removes autostart</span>
-npm uninstall -g xailon-orbitd</code></pre>
+rm ~/.local/bin/xailon-orbitd         <span class="c"># or: brew uninstall xailon-orbitd / scoop uninstall xailon-orbitd</span></code></pre>
           <p>
             Then delete the data directory listed in <a href="#data">Data and logs</a> if you want to remove downloaded
             agents and settings.

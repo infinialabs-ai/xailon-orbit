@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   release:
+    # Opt in once signing and store secrets are set (ANDROID_RELEASE=true).
+    if: vars.ANDROID_RELEASE == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:

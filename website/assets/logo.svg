@@ -1,16 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <title>XailonOrbit</title>
-  <rect width="48" height="48" rx="12" fill="#16123F" />
-  <ellipse
-    cx="24"
-    cy="24"
-    rx="17"
-    ry="8"
-    fill="none"
-    stroke="#8FA0FF"
-    stroke-width="2.5"
-    transform="rotate(-30 24 24)"
-  />
-  <circle cx="24" cy="24" r="6.5" fill="#5266EB" />
-  <circle cx="38.7" cy="15.5" r="3.2" fill="#FFFFFF" />
+  <rect width="1024" height="1024" rx="229" fill="#16123F" />
+  <g transform="translate(225.3 244) scale(12.466)">
+    <path d="M46.003 21.496L24.5224 43H8.76562L30.2462 21.496H34.4507L12.9621 0H24.5224L46.003 21.496Z" fill="#fff" />
+    <path
+      d="M24.7284 21.4969L13.4495 32.7829H5.18525L16.4561 21.4969H11.2789L0 10.2109H13.4495L24.7284 21.4969Z"
+      fill="#fff"
+    />
+  </g>
 </svg>

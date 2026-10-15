@@ -118,7 +118,8 @@ jobs:
 
   publish-npm:
     name: Publish npm packages (OIDC)
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # Opt in once npm Trusted Publishing is configured (repository variable NPM_PUBLISH=true).
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH == 'true'
     needs: [pack-npm, release]
     runs-on: ubuntu-latest
     permissions:
@@ -205,6 +206,8 @@ jobs:
           files: artifacts/**/*
 
   bump-packages:
+    # Opt in once TAP_TOKEN can push to the tap and bucket repos (BUMP_PACKAGES=true).
+    if: vars.BUMP_PACKAGES == 'true'
     needs: [release]
     uses: ./.github/workflows/bump-packages.yml
     secrets: inherit
@@ -212,7 +215,8 @@ jobs:
       tag: ${{ github.ref_name }}
 
   publish-chrome:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Opt in once store credentials are set (STORE_PUBLISH=true).
+    if: startsWith(github.ref, 'refs/tags/v') && vars.STORE_PUBLISH == 'true'
     needs: build-extension
     runs-on: ubuntu-latest
     steps:
@@ -229,7 +233,8 @@ jobs:
           refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
 
   publish-edge:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Opt in once store credentials are set (STORE_PUBLISH=true).
+    if: startsWith(github.ref, 'refs/tags/v') && vars.STORE_PUBLISH == 'true'
     needs: build-extension
     runs-on: ubuntu-latest
     steps:
@@ -245,7 +250,8 @@ jobs:
           client-id: ${{ secrets.EDGE_CLIENT_ID }}
 
   publish-firefox:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Opt in once store credentials are set (STORE_PUBLISH=true).
+    if: startsWith(github.ref, 'refs/tags/v') && vars.STORE_PUBLISH == 'true'
     needs: build-extension
     runs-on: ubuntu-latest
     steps:

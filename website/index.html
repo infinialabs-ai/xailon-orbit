@@ -254,20 +254,26 @@
               <h3>Install the daemon</h3>
               <p>On the computer where your agents run.</p>
               <div class="tabs" role="tablist">
-                <button type="button" role="tab" aria-selected="true" aria-controls="i-npm">npm</button>
+                <button type="button" role="tab" aria-selected="true" aria-controls="i-sh">macOS / Linux</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="i-ps">Windows</button>
                 <button type="button" role="tab" aria-selected="false" aria-controls="i-brew">Homebrew</button>
-                <button type="button" role="tab" aria-selected="false" aria-controls="i-scoop">Scoop</button>
               </div>
-              <div class="tab-panel" id="i-npm">
-                <div class="cmd"><code>npm install -g xailon-orbitd</code><button type="button">Copy</button></div>
+              <div class="tab-panel" id="i-sh">
+                <div class="cmd">
+                  <code>curl -fsSL https://xailon-orbit.infinialabs.ai/install.sh | sh</code
+                  ><button type="button">Copy</button>
+                </div>
+              </div>
+              <div class="tab-panel" id="i-ps" hidden>
+                <div class="cmd">
+                  <code>irm https://xailon-orbit.infinialabs.ai/install.ps1 | iex</code
+                  ><button type="button">Copy</button>
+                </div>
               </div>
               <div class="tab-panel" id="i-brew" hidden>
                 <div class="cmd">
                   <code>brew install infinialabs-ai/tap/xailon-orbitd</code><button type="button">Copy</button>
                 </div>
-              </div>
-              <div class="tab-panel" id="i-scoop" hidden>
-                <div class="cmd"><code>scoop install xailon-orbitd</code><button type="button">Copy</button></div>
               </div>
             </div>
           </div>
