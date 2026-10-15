@@ -17,7 +17,7 @@
     "xailonorbit": "workspace:*",
     "diff": "^8.0.4",
     "duoyun-ui": "^2.2.16",
-    "relay-client-ts": "github:infinialabs-ai/xailon-relay#path:/client-ts"
+    "relay-client-ts": "git+https://github.com/infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",

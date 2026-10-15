@@ -31,13 +31,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authorize private xailon-relay dependency
-        env:
-          RELAY_REPO_TOKEN: ${{ secrets.RELAY_REPO_TOKEN }}
-        run: |
-          git config --global url."https://x-access-token:${RELAY_REPO_TOKEN}@github.com/infinialabs-ai/xailon-relay".insteadOf "git@github.com:infinialabs-ai/xailon-relay"
-          git config --global --add url."https://x-access-token:${RELAY_REPO_TOKEN}@github.com/infinialabs-ai/xailon-relay".insteadOf "https://github.com/infinialabs-ai/xailon-relay"
-          echo CARGO_NET_GIT_FETCH_WITH_CLI=true >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -153,13 +146,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authorize private xailon-relay dependency
-        env:
-          RELAY_REPO_TOKEN: ${{ secrets.RELAY_REPO_TOKEN }}
-        run: |
-          git config --global url."https://x-access-token:${RELAY_REPO_TOKEN}@github.com/infinialabs-ai/xailon-relay".insteadOf "git@github.com:infinialabs-ai/xailon-relay"
-          git config --global --add url."https://x-access-token:${RELAY_REPO_TOKEN}@github.com/infinialabs-ai/xailon-relay".insteadOf "https://github.com/infinialabs-ai/xailon-relay"
-          echo CARGO_NET_GIT_FETCH_WITH_CLI=true >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.33.2

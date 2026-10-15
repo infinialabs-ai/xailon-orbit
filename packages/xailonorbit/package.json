@@ -35,7 +35,7 @@
     "htm": "^3.1.1",
     "maplibre-gl": "^6.12.0",
     "preact": "^11.0.1",
-    "relay-client-ts": "github:infinialabs-ai/xailon-relay#path:/client-ts",
+    "relay-client-ts": "git+https://github.com/infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts",
     "tauri-plugin-edge-to-edge-api": "^0.1.1",
     "tauri-plugin-fcm": "^0.2.0",
     "tauri-plugin-selection-menu-api": "^0.1.2",

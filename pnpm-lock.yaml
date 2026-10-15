@@ -71,8 +71,8 @@ importers:
         specifier: ^2.2.16
         version: 2.2.16(@mantou/gem@2.2.14)
       relay-client-ts:
-        specifier: github:infinialabs-ai/xailon-relay#path:/client-ts
-        version: git+https://git@github.com:infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts
+        specifier: git+https://github.com/infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts
+        version: https://codeload.github.com/infinialabs-ai/xailon-relay/tar.gz/527d5f1e0ff0009a4c12ade4646807b7c0cbbb92#path:/client-ts
       xailonorbit:
         specifier: workspace:*
         version: link:../xailonorbit
@@ -156,8 +156,8 @@ importers:
         specifier: ^11.0.1
         version: 11.0.1
       relay-client-ts:
-        specifier: github:infinialabs-ai/xailon-relay#path:/client-ts
-        version: git+https://git@github.com:infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts
+        specifier: git+https://github.com/infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts
+        version: https://codeload.github.com/infinialabs-ai/xailon-relay/tar.gz/527d5f1e0ff0009a4c12ade4646807b7c0cbbb92#path:/client-ts
       tauri-plugin-edge-to-edge-api:
         specifier: ^0.1.1
         version: 0.1.1
@@ -4188,8 +4188,8 @@ packages:
     resolution: {integrity: sha512-ZbgR5aZEdf4UKZVBPYIgaglBmSF2Hi94s2PcIHhRGFjKYu+chjJdYfHn4rt3hB6eCKLJ8giVIIfgMa1ehDfZKA==}
     engines: {node: '>=0.10.0'}
 
-  relay-client-ts@git+https://git@github.com:infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts:
-    resolution: {commit: 527d5f1e0ff0009a4c12ade4646807b7c0cbbb92, path: /client-ts, repo: git@github.com:infinialabs-ai/xailon-relay.git, type: git}
+  relay-client-ts@https://codeload.github.com/infinialabs-ai/xailon-relay/tar.gz/527d5f1e0ff0009a4c12ade4646807b7c0cbbb92#path:/client-ts:
+    resolution: {path: /client-ts, tarball: https://codeload.github.com/infinialabs-ai/xailon-relay/tar.gz/527d5f1e0ff0009a4c12ade4646807b7c0cbbb92}
     version: 0.1.9
 
   require-directory@2.1.1:
@@ -9217,7 +9217,7 @@ snapshots:
     dependencies:
       rc: 1.2.8
 
-  relay-client-ts@git+https://git@github.com:infinialabs-ai/xailon-relay.git#527d5f1e0ff0009a4c12ade4646807b7c0cbbb92&path:/client-ts: {}
+  relay-client-ts@https://codeload.github.com/infinialabs-ai/xailon-relay/tar.gz/527d5f1e0ff0009a4c12ade4646807b7c0cbbb92#path:/client-ts: {}
 
   require-directory@2.1.1: {}
 
