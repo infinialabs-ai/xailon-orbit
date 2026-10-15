@@ -281,8 +281,8 @@ pnpm --filter xailonorbit-extension build</code></pre>
           <p>
             The mobile apps are built with Tauri 2. With the Android SDK or Xcode installed, run
             <code>pnpm -C packages/xailonorbit run tauri android dev</code>
-            (or <code>tauri ios dev</code>). Push notifications need your own Firebase project; everything else works
-            without one.
+            (or <code>tauri ios dev</code>). The Firebase config for push notifications is included. If you change the
+            bundle ID, register it in your own Firebase project.
           </p>
         </section>
 
