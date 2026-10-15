@@ -228,8 +228,36 @@ cargo install --path crates/daemon</code></pre>
               <td>Firefox Add-ons <span class="badge">Coming soon</span>. Opens as a sidebar.</td>
             </tr>
           </table>
+          <h3>Install the browser extension from a release</h3>
+          <p>Until the store listings are live, download the extension from the latest release and load it by hand:</p>
+          <ul>
+            <li>
+              <a href="https://github.com/infinialabs-ai/xailon-orbit/releases/latest/download/extension-chrome.zip"
+                >extension-chrome.zip</a
+              >
+              for Chrome and Edge (unzip it first)
+            </li>
+            <li>
+              <a href="https://github.com/infinialabs-ai/xailon-orbit/releases/latest/download/extension-firefox.zip"
+                >extension-firefox.zip</a
+              >
+              for Firefox
+            </li>
+          </ul>
+          <ol class="list">
+            <li>
+              <strong>Chrome / Edge:</strong>
+              open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, click
+              <strong>Load unpacked</strong> and choose the unzipped folder.
+            </li>
+            <li>
+              <strong>Firefox:</strong>
+              open <code>about:debugging#/runtime/this-firefox</code>, click <strong>Load Temporary Add-on</strong> and
+              choose the zip file.
+            </li>
+          </ol>
           <h3>Build the browser extension yourself</h3>
-          <p>Until the store listings are live, you can build and load the extension from source:</p>
+          <p>Or build it from source:</p>
           <pre><code>git clone https://github.com/infinialabs-ai/xailon-orbit.git
 cd xailon-orbit
 corepack enable

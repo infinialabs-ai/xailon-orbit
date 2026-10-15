@@ -7,9 +7,12 @@
 **1. Install the daemon** on the computer where your agents run:
 
 ```sh
-npm install -g xailon-orbitd          # Node.js 22+, macOS / Linux x64 / Windows x64
-brew install infinialabs-ai/tap/xailon-orbitd   # or Homebrew
+curl -fsSL https://xailon-orbit.infinialabs.ai/install.sh | sh   # macOS / Linux x64
+irm https://xailon-orbit.infinialabs.ai/install.ps1 | iex       # Windows x64 (PowerShell)
+brew install infinialabs-ai/tap/xailon-orbitd                    # or Homebrew
 ```
+
+Builds for every platform, plus the browser extension, are on the [releases page](https://github.com/infinialabs-ai/xailon-orbit/releases/latest). Full walkthrough: [user guide](https://xailon-orbit.infinialabs.ai/guide/).
 
 **2. Start it:**
 
@@ -57,7 +60,7 @@ scoop install xailon-orbitd
 cargo install --path crates/daemon
 ```
 
-To upgrade an npm install, run `xailon-orbitd stop`, then `npm install -g xailon-orbitd@latest`, then `xailon-orbitd start`. Stop the daemon before you uninstall it. If you change your Node installation or npm's global directory, run `xailon-orbitd restart` from the new installation so autostart uses the new path.
+To upgrade, run `xailon-orbitd stop`, rerun the installer (or `brew upgrade` / `scoop update`), then `xailon-orbitd start`. Stop the daemon before you uninstall it. If you change your Node installation or npm's global directory, run `xailon-orbitd restart` from the new installation so autostart uses the new path.
 
 ## Daemon commands
 
