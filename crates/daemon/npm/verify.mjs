@@ -61,7 +61,7 @@ export async function withInstallation(output, verify) {
     ]);
     const root = join(prefix, 'lib', 'node_modules', 'xailon-orbitd');
     const { stdout } = await exec('npm', ['ls', '-g', '--prefix', prefix, '--json']);
-    assert.equal(JSON.parse(stdout).dependencies.xailon - orbitd.version, version);
+    assert.equal(JSON.parse(stdout).dependencies['xailon-orbitd'].version, version);
     // Only the compatible binary should be installed, even with install scripts disabled.
     for (const name of packages.keys()) {
       if (name === 'xailon-orbitd') continue;
